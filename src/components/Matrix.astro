@@ -1,0 +1,43 @@
+---
+// Conversion table: rows are the format you have, columns the one you need.
+import { getDict, toolText } from '../i18n';
+import { localePath, type Locale } from '../i18n/locales';
+import { FORMAT_LABEL, findConversion, MATRIX_FROM, MATRIX_TO } from '../tools';
+
+const locale = Astro.props.locale as Locale;
+const dict = getDict(locale);
+---
+
+<div class="matrix-wrap">
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th scope="col" class="corner">{dict.home.matrixFrom} ↓ {dict.home.matrixTo} →</th>
+        {MATRIX_TO.map((to) => <th scope="col">{FORMAT_LABEL[to]}</th>)}
+      </tr>
+    </thead>
+    <tbody>
+      {
+        MATRIX_FROM.map((from) => (
+          <tr>
+            <th scope="row">{FORMAT_LABEL[from]}</th>
+            {MATRIX_TO.map((to) => {
+              const tool = findConversion(from, to);
+              return (
+                <td>
+                  {tool ? (
+                    <a href={localePath(locale, tool.id)} title={toolText(dict, tool).name}>
+                      {FORMAT_LABEL[from]} → {FORMAT_LABEL[to]}
+                    </a>
+                  ) : (
+                    <span class="none" aria-hidden="true">·</span>
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</div>

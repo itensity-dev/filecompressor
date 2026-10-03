@@ -6,12 +6,12 @@ interface Props {
 const { title, items } = Astro.props;
 ---
 
-<section class="section">
+<section class="section split">
   <h2>{title}</h2>
   <div class="faq">
     {
-      items.map((item, i) => (
-        <details open={i === 0}>
+      items.map((item) => (
+        <details>
           <summary>{item.q}</summary>
           <p>{item.a}</p>
         </details>

@@ -9,16 +9,55 @@ export interface Tool {
   id: string;
   kind: ToolKind;
   category: 'compress' | 'convert';
-  /** Formats accepted as input. */
+  /** Formats accepted as input; the first one is the page's main format. */
   from: FormatKey[];
   /** Output format; 'same' keeps the input format. */
   to: FormatKey | 'same';
-  /** Converter pages share a localized text template. */
-  template?: boolean;
+  /** Generated converter pages share a localized text template. */
+  template?: 'image' | 'pdf';
   related: string[];
 }
 
 const imageInputs: FormatKey[] = ['jpg', 'png', 'webp', 'avif', 'heic'];
+
+/** Rows and columns of the conversion table. */
+export const MATRIX_FROM: FormatKey[] = ['heic', 'jpg', 'png', 'webp', 'avif', 'pdf'];
+export const MATRIX_TO: FormatKey[] = ['jpg', 'png', 'webp', 'avif', 'pdf'];
+
+const conversionId = (from: FormatKey, to: FormatKey) => `${from}-to-${to}`;
+
+function converter(from: FormatKey, to: FormatKey): Tool {
+  // HEIC can be read but not written, so there is no "jpg-to-heic".
+  const back = to !== 'pdf' && MATRIX_TO.includes(from) ? [conversionId(to, from)] : [];
+  const sibling = MATRIX_TO.filter((t) => t !== to && t !== from && t !== 'pdf')
+    .slice(0, 1)
+    .map((t) => conversionId(from, t));
+  const compress = to === 'pdf' ? 'compress-pdf' : `compress-${to === 'avif' ? 'image' : to}`;
+  if (to === 'pdf') {
+    return {
+      id: conversionId(from, to),
+      kind: 'images-to-pdf',
+      category: 'convert',
+      from: [from, ...imageInputs.filter((f) => f !== from)],
+      to: 'pdf',
+      template: from === 'jpg' ? undefined : 'pdf',
+      related: ['compress-pdf', 'pdf-to-jpg', from === 'jpg' ? 'heic-to-pdf' : 'jpg-to-pdf'],
+    };
+  }
+  return {
+    id: conversionId(from, to),
+    kind: 'image',
+    category: 'convert',
+    from: [from],
+    to,
+    template: 'image',
+    related: [...back, ...sibling, compress, 'image-converter'].slice(0, 3),
+  };
+}
+
+const imageConverters = MATRIX_FROM.filter((f) => f !== 'pdf').flatMap((from) =>
+  MATRIX_TO.filter((to) => to !== from).map((to) => converter(from, to)),
+);
 
 export const TOOLS: Tool[] = [
   {
@@ -35,7 +74,7 @@ export const TOOLS: Tool[] = [
     category: 'compress',
     from: imageInputs,
     to: 'same',
-    related: ['compress-jpg', 'compress-png', 'png-to-webp'],
+    related: ['compress-jpg', 'compress-png', 'image-converter'],
   },
   {
     id: 'compress-jpg',
@@ -61,38 +100,15 @@ export const TOOLS: Tool[] = [
     to: 'webp',
     related: ['compress-image', 'webp-to-jpg', 'webp-to-png'],
   },
-  ...(
-    [
-      ['heic', 'jpg', ['heic-to-png', 'jpg-to-pdf', 'compress-jpg']],
-      ['heic', 'png', ['heic-to-jpg', 'compress-png', 'jpg-to-pdf']],
-      ['png', 'jpg', ['jpg-to-png', 'compress-jpg', 'png-to-webp']],
-      ['jpg', 'png', ['png-to-jpg', 'compress-png', 'jpg-to-webp']],
-      ['webp', 'jpg', ['webp-to-png', 'jpg-to-webp', 'compress-jpg']],
-      ['webp', 'png', ['webp-to-jpg', 'png-to-webp', 'compress-png']],
-      ['jpg', 'webp', ['png-to-webp', 'webp-to-jpg', 'compress-webp']],
-      ['png', 'webp', ['jpg-to-webp', 'webp-to-png', 'compress-png']],
-      ['jpg', 'avif', ['avif-to-jpg', 'jpg-to-webp', 'compress-jpg']],
-      ['avif', 'jpg', ['jpg-to-avif', 'webp-to-jpg', 'compress-jpg']],
-    ] as [FormatKey, FormatKey, string[]][]
-  ).map(
-    ([from, to, related]): Tool => ({
-      id: `${from}-to-${to}`,
-      kind: 'image',
-      category: 'convert',
-      from: [from],
-      to,
-      template: true,
-      related,
-    }),
-  ),
   {
-    id: 'jpg-to-pdf',
-    kind: 'images-to-pdf',
+    id: 'image-converter',
+    kind: 'image',
     category: 'convert',
     from: imageInputs,
-    to: 'pdf',
-    related: ['compress-pdf', 'pdf-to-jpg', 'heic-to-jpg'],
+    to: 'jpg',
+    related: ['heic-to-jpg', 'png-to-jpg', 'compress-image'],
   },
+  ...imageConverters,
   {
     id: 'pdf-to-jpg',
     kind: 'pdf-to-images',
@@ -113,6 +129,10 @@ export const TOOLS: Tool[] = [
 
 export const TOOL_IDS = TOOLS.map((t) => t.id);
 export const getTool = (id: string) => TOOLS.find((t) => t.id === id);
+
+/** The page converting `from` into `to`, if there is one. */
+export const findConversion = (from: FormatKey, to: FormatKey) =>
+  from === to ? undefined : getTool(conversionId(from, to));
 
 export const FORMAT_LABEL: Record<FormatKey, string> = {
   jpg: 'JPG',

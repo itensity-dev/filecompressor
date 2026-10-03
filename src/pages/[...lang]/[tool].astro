@@ -1,15 +1,14 @@
 ---
-import Badges from '../../components/Badges.astro';
 import BrowserCheck from '../../components/BrowserCheck.astro';
 import Faq from '../../components/Faq.astro';
 import Features from '../../components/Features.astro';
-import ToolCards from '../../components/ToolCards.astro';
+import PrivacyLine from '../../components/PrivacyLine.astro';
 import ToolApp from '../../components/app/ToolApp';
 import { fmt, getDict, toolText } from '../../i18n';
 import { langParams, localePath, LOCALE_INFO, type Locale } from '../../i18n/locales';
 import Base from '../../layouts/Base.astro';
 import { SITE_NAME } from '../../site';
-import { FORMAT_LABEL, getTool, TOOLS, type Tool } from '../../tools';
+import { FORMAT_LABEL, findConversion, getTool, TOOLS, type FormatKey, type Tool } from '../../tools';
 
 export function getStaticPaths() {
   return langParams().flatMap(({ lang, locale }) =>
@@ -28,9 +27,22 @@ const text = toolText(dict, tool);
 const vars = { tool: text.name };
 const faq = dict.faq.items.map((i) => ({ q: fmt(i.q, vars), a: fmt(i.a, vars) }));
 const related = tool.related.map((id) => getTool(id)).filter((t): t is Tool => !!t);
-const formatKeys = [...new Set([...tool.from.slice(0, 1), ...(tool.to === 'same' ? tool.from.slice(1, 4) : [tool.to])])];
+const formatKeys: FormatKey[] = [
+  ...new Set([
+    ...tool.from.slice(0, 1),
+    ...(tool.to === 'same' ? tool.from.slice(1, 4) : [tool.to]),
+  ]),
+];
 const url = new URL(localePath(locale, tool.id), Astro.site).href;
 const home = new URL(localePath(locale), Astro.site).href;
+const categoryName = tool.category === 'compress' ? dict.nav.compress : dict.nav.convert;
+
+// "PDF" in the converter's format switcher links to the matching to-PDF page.
+const pdfTool =
+  tool.kind === 'image' && tool.category === 'convert'
+    ? (findConversion(tool.from.length === 1 ? tool.from[0] : 'jpg', 'pdf') ?? getTool('jpg-to-pdf'))
+    : undefined;
+const pdfHref = pdfTool ? localePath(locale, pdfTool.id) : undefined;
 
 const jsonLd = [
   {
@@ -76,32 +88,34 @@ const appStrings = {
 
 <Base locale={locale} title={text.title} description={text.description} page={tool.id} jsonLd={jsonLd}>
   <section class="hero container">
-    <nav class="breadcrumbs" aria-label="Breadcrumb">
+    <nav class="crumbs" aria-label="Breadcrumb">
       <a href={localePath(locale)}>{SITE_NAME}</a>
-      <span aria-hidden="true">›</span>
-      <span aria-current="page">{text.name}</span>
+      <span aria-hidden="true">/</span>
+      <span>{categoryName}</span>
     </nav>
     <h1>{text.name}</h1>
     <p class="lead">{text.description}</p>
-    <Badges locale={locale} />
+    <PrivacyLine locale={locale} />
   </section>
 
   <section class="container tool-section">
     <BrowserCheck locale={locale} />
-    <ToolApp client:load tool={tool} t={appStrings} locale={LOCALE_INFO[locale].hreflang} />
+    <ToolApp client:load tool={tool} t={appStrings} locale={LOCALE_INFO[locale].hreflang} pdfHref={pdfHref} />
     <noscript><p class="noscript">JavaScript is required: files are processed by code running in your browser.</p></noscript>
   </section>
 
-  <div class="container prose">
-    <section class="section">
+  <div class="container">
+    <section class="section split">
       <h2>{fmt(dict.how.title, vars)}</h2>
-      <p>{text.intro}</p>
-      <ol class="steps">
-        {dict.how.steps.map((s) => <li>{s}</li>)}
-      </ol>
+      <div class="body">
+        <p>{text.intro}</p>
+        <ol class="steps">
+          {dict.how.steps.map((s) => <li>{s}</li>)}
+        </ol>
+      </div>
     </section>
 
-    <section class="section">
+    <section class="section split">
       <h2>{dict.sections.formats}</h2>
       <dl class="formats">
         {
@@ -118,9 +132,17 @@ const appStrings = {
     <Features locale={locale} />
     <Faq title={dict.faq.title} items={faq} />
 
-    <section class="section">
+    <section class="section split">
       <h2>{dict.sections.related}</h2>
-      <ToolCards locale={locale} tools={related} />
+      <ul class="related">
+        {
+          related.map((t) => (
+            <li>
+              <a href={localePath(locale, t.id)}>{toolText(dict, t).name} <span aria-hidden="true">→</span></a>
+            </li>
+          ))
+        }
+      </ul>
     </section>
   </div>
 </Base>

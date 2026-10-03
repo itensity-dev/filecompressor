@@ -1,21 +1,17 @@
 ---
+// "How it works": four plain facts, no icons.
 import { fmt, getDict } from '../i18n';
 import type { Locale } from '../i18n/locales';
 
-interface Props {
-  locale: Locale;
-}
-const dict = getDict(Astro.props.locale);
-const icons = ['🔒', '🎁', '⚡', '🚀', '📴', '🛡️'];
+const dict = getDict(Astro.props.locale as Locale);
 ---
 
-<section class="section">
+<section class="section split">
   <h2>{fmt(dict.why.title)}</h2>
-  <ul class="features">
+  <ul class="facts-grid">
     {
-      dict.why.items.map((item, i) => (
-        <li class="feature">
-          <span class="feature-icon" aria-hidden="true">{icons[i]}</span>
+      dict.why.items.map((item) => (
+        <li>
           <h3>{item.title}</h3>
           <p>{item.text}</p>
         </li>

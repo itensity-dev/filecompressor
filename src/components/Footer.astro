@@ -18,11 +18,10 @@ const year = new Date().getFullYear();
   <div class="container footer-grid">
     <div class="footer-brand">
       <a class="logo" href={localePath(locale)}>
-        <Logo size={24} />
+        <Logo size={22} />
         <span>{SITE_NAME}</span>
       </a>
       <p>{dict.footer.tagline}</p>
-      <p class="footer-privacy">{dict.footer.privacy}</p>
       <p><a href={localePath(locale, 'about')}>{dict.nav.about}</a></p>
     </div>
     <nav aria-label={dict.nav.compress}>
@@ -39,7 +38,7 @@ const year = new Date().getFullYear();
     </nav>
     <nav aria-label={dict.nav.convert}>
       <h2>{dict.nav.convert}</h2>
-      <ul class="cols-2">
+      <ul class="cols-3">
         {
           TOOLS.filter((t) => t.category === 'convert').map((t) => (
             <li>
@@ -64,5 +63,8 @@ const year = new Date().getFullYear();
       </ul>
     </nav>
   </div>
-  <div class="container footer-bottom">© {year} {SITE_NAME}</div>
+  <div class="container footer-bottom">
+    <span>© {year} {SITE_NAME}</span>
+    <span>{dict.footer.privacy}</span>
+  </div>
 </footer>

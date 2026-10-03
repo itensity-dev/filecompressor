@@ -4,41 +4,47 @@ import { chromium } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const logo = readFileSync('public/favicon.svg', 'utf8');
+const font = readFileSync(
+  'node_modules/@fontsource-variable/onest/files/onest-latin-wght-normal.woff2',
+).toString('base64');
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
 async function shot(html, width, height, path) {
   await page.setViewportSize({ width, height });
-  await page.setContent(`<!doctype html><html><body style="margin:0">${html}</body></html>`);
-  await page.screenshot({ path, omitBackground: false });
+  await page.setContent(`<!doctype html><html><head><style>
+    @font-face { font-family: Onest; src: url(data:font/woff2;base64,${font}) format('woff2'); font-weight: 100 900; }
+    body { margin: 0; font-family: Onest, sans-serif; }
+  </style></head><body>${html}</body></html>`);
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path });
   console.log('wrote', path);
 }
 
-const icon = (size, padding) =>
-  `<div style="width:${size}px;height:${size}px;display:grid;place-items:center;background:#4f46e5">
-     <div style="width:${size - padding * 2}px;height:${size - padding * 2}px">${logo.replace('<svg', '<svg width="100%" height="100%"')}</div>
+const sized = (s) => logo.replace('<svg', `<svg width="${s}" height="${s}"`);
+const icon = (size, pad) =>
+  `<div style="width:${size}px;height:${size}px;display:grid;place-items:center;background:#16150f">
+     <div style="width:${size - pad * 2}px;height:${size - pad * 2}px">${logo.replace('<svg', '<svg width="100%" height="100%"')}</div>
    </div>`;
 
-await shot(icon(512, 40), 512, 512, 'public/icon-512.png');
-await shot(icon(192, 16), 192, 192, 'public/icon-192.png');
-await shot(icon(180, 14), 180, 180, 'public/apple-touch-icon.png');
-await shot(`<div style="width:32px;height:32px">${logo.replace('<svg', '<svg width="32" height="32"')}</div>`, 32, 32, 'public/favicon-32.png');
+await shot(icon(512, 64), 512, 512, 'public/icon-512.png');
+await shot(icon(192, 20), 192, 192, 'public/icon-192.png');
+await shot(icon(180, 18), 180, 180, 'public/apple-touch-icon.png');
+await shot(sized(32), 32, 32, 'public/favicon-32.png');
 
 const formats = ['PDF', 'JPG', 'PNG', 'WebP', 'AVIF', 'HEIC']
-  .map((f) => `<span style="padding:10px 22px;border-radius:999px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25)">${f}</span>`)
+  .map((f) => `<span style="padding:8px 16px;border:2px solid #16150f;border-radius:8px">${f}</span>`)
   .join('');
 await shot(
-  `<div style="width:1200px;height:630px;box-sizing:border-box;padding:80px;display:flex;flex-direction:column;justify-content:space-between;
-      background:radial-gradient(circle at 85% 15%,#7c74ff 0,transparent 45%),linear-gradient(135deg,#312e81,#4f46e5);color:#fff;font-family:system-ui,sans-serif">
-     <div style="display:flex;align-items:center;gap:20px;font-size:40px;font-weight:700">
-       <div style="width:72px;height:72px;border-radius:18px;overflow:hidden;box-shadow:0 0 0 3px rgba(255,255,255,.4)">${logo.replace('<svg', '<svg width="72" height="72"')}</div>
-       FileCompressor
-     </div>
+  `<div style="width:1200px;height:630px;box-sizing:border-box;padding:72px 80px;display:flex;flex-direction:column;justify-content:space-between;background:#f6f4ef;color:#16150f">
+     <div style="display:flex;align-items:center;gap:18px;font-size:36px;font-weight:700;letter-spacing:-0.02em">${sized(56)} FileCompressor</div>
      <div>
-       <div style="font-size:68px;font-weight:800;line-height:1.1;letter-spacing:-1px">Compress &amp; convert files<br>right in your browser</div>
-       <div style="margin-top:22px;font-size:30px;opacity:.9">Free · No upload · No limits · Works offline</div>
+       <div style="font-size:84px;font-weight:650;line-height:1;letter-spacing:-0.04em;max-width:960px">Compress and convert files without uploading them</div>
+       <div style="display:flex;align-items:center;gap:12px;margin-top:28px;font-size:30px;color:#3b3830">
+         <span style="width:14px;height:14px;border-radius:50%;background:#ff5b14"></span> Free · Runs in your browser · Works offline
+       </div>
      </div>
-     <div style="display:flex;gap:14px;font-size:26px;font-weight:600">${formats}</div>
+     <div style="display:flex;gap:12px;font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:700">${formats}</div>
    </div>`,
   1200,
   630,

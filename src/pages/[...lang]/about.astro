@@ -16,12 +16,14 @@ const dict = getDict(locale);
   <section class="hero container">
     <h1>{fmt(dict.about.h1)}</h1>
   </section>
-  <div class="container prose">
+  <div class="container">
     {
       dict.about.sections.map((s) => (
-        <section class="section">
+        <section class="section split">
           <h2>{fmt(s.h)}</h2>
-          <p>{fmt(s.p)}</p>
+          <div class="body">
+            <p>{fmt(s.p)}</p>
+          </div>
         </section>
       ))
     }

@@ -56,9 +56,16 @@ export default defineConfig({
       },
     },
   },
+  // The toolbar is a dev-only overlay; it was also the module that failed
+  // with "504 Outdated Optimize Dep" whenever Vite re-bundled dependencies.
+  devToolbar: { enabled: false },
   vite: {
     optimizeDeps: {
       exclude: wasmPackages,
+      // These are imported lazily (inside workers or on first use). Listing
+      // them lets Vite pre-bundle them at startup instead of discovering them
+      // mid-session, which forces a page reload and drops the user's files.
+      include: ['pdf-lib', 'pdfjs-dist/legacy/build/pdf.mjs', 'heic-to/csp'],
     },
     worker: {
       format: 'es',

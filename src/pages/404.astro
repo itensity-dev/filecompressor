@@ -8,8 +8,9 @@ const dict = getDict('en');
 
 <Base locale="en" title={dict.meta.notFoundTitle} description={dict.notFound.text} page="" noindex>
   <section class="hero container">
+    <p class="crumbs">404</p>
     <h1>{dict.notFound.title}</h1>
     <p class="lead">{dict.notFound.text}</p>
-    <p><a class="btn btn-primary btn-lg" href={localePath('en')}>{dict.notFound.back}</a></p>
+    <p class="hero-actions"><a class="btn btn-primary btn-lg" href={localePath('en')}>{dict.notFound.back}</a></p>
   </section>
 </Base>

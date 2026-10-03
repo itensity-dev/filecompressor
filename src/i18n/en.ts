@@ -21,6 +21,10 @@ const en = {
     about: 'How it works',
     language: 'Language',
     skip: 'Skip to content',
+    theme: 'Theme',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'Auto',
   },
   badges: {
     private: 'Files never leave your device',
@@ -35,10 +39,11 @@ const en = {
     supported: 'Supported: {formats}',
     overlay: 'Drop to add files',
     addMore: 'Add more files',
-    local: 'Processed on your device — nothing is uploaded.',
+    local: 'Processed on this device. Nothing is uploaded.',
   },
   settings: {
     title: 'Settings',
+    convertTo: 'Convert to',
     quality: 'Quality',
     qualityHint: 'Lower quality = smaller file',
     format: 'Output format',
@@ -67,10 +72,10 @@ const en = {
     queued: 'Waiting…',
     processing: 'Processing…',
     ready: 'Ready',
-    kept: 'Already optimized — original kept',
+    kept: 'Already optimized, original kept',
     errors: {
       unsupported: 'This file type is not supported here',
-      encrypted: 'Password-protected PDF — remove the password first',
+      encrypted: 'Password-protected PDF. Remove the password first.',
       decode: 'The file is damaged or cannot be read',
       failed: 'Could not process this file (it may be too large for this device)',
     },
@@ -97,11 +102,14 @@ const en = {
     images: { one: '{n} image', other: '{n} images' } as Plural,
   },
   home: {
-    h1: 'Compress and convert files — privately, in your browser',
+    h1: 'Compress and convert files without uploading them',
     subtitle:
-      'PDF, JPG, PNG, WebP, AVIF and HEIC. Free, unlimited, and your files never leave your device.',
-    compressTitle: 'Compress files',
-    convertTitle: 'Convert files',
+      'PDF, JPG, PNG, WebP, AVIF and HEIC. The work happens in your browser, so your files stay on your computer or phone.',
+    compressTitle: 'Compress',
+    convertTitle: 'Convert',
+    convertHint: 'Find the format you have on the left and the one you need at the top.',
+    matrixFrom: 'From',
+    matrixTo: 'To',
   },
   how: {
     title: '{tool} in 3 simple steps',
@@ -112,31 +120,23 @@ const en = {
     ],
   },
   why: {
-    title: 'Why {site}?',
+    title: 'How it works',
     items: [
       {
-        title: 'Private by design',
-        text: 'Files are processed on your device with WebAssembly. They are never uploaded, stored or seen by anyone — not even by us.',
+        title: 'Nothing is uploaded',
+        text: 'Opening the page loads the compression code into your browser. Files are read, processed and saved on your device and never sent anywhere.',
       },
       {
-        title: 'Free, without limits',
-        text: 'No sign-up, no watermarks, no daily quotas and no caps on the number of files. Process as much as your device can handle.',
+        title: 'No accounts or limits',
+        text: 'There is no sign-up, no watermark and no daily quota. The only limit is the memory of your device.',
       },
       {
-        title: 'Best-in-class compression',
-        text: 'Powered by MozJPEG, oxipng, libwebp and libavif — open-source encoders trusted by Google and Mozilla.',
-      },
-      {
-        title: 'Fast batch processing',
-        text: 'Files are processed in parallel on all CPU cores, with no waiting for uploads or downloads — even for hundreds of files.',
+        title: 'Proven open-source encoders',
+        text: 'MozJPEG, oxipng, libwebp, libavif, pdf-lib and pdf.js, compiled to WebAssembly and running on all CPU cores.',
       },
       {
         title: 'Works offline',
-        text: 'After the first visit the site works without an internet connection. Install it as an app on your phone or computer.',
-      },
-      {
-        title: 'No ads, no tracking',
-        text: 'No cookies, no trackers and no ads. A strict Content Security Policy stops the page from sending your data anywhere.',
+        text: 'Once a tool has loaded it keeps working without a connection. You can also install the site as an app.',
       },
     ],
   },
@@ -165,7 +165,7 @@ const en = {
       },
       {
         q: 'Why did a file not get smaller?',
-        a: 'Some files are already well optimized. In that case the original is kept rather than producing a bigger file. With PDFs, most savings come from images — PDFs that contain only text are usually compact already.',
+        a: 'Some files are already well optimized. In that case the original is kept rather than producing a bigger file. With PDFs, most of the savings come from images. PDFs that contain only text are usually compact already.',
       },
     ],
   },
@@ -178,18 +178,18 @@ const en = {
       name: 'Compress PDF',
       title: 'Compress PDF — reduce PDF file size, free & no upload',
       description:
-        'Reduce PDF file size by up to 90% right in your browser. Free, no sign-up, no limits — your PDFs are never uploaded to any server.',
+        'Reduce PDF file size by up to 90% right in your browser. Free, no sign-up, no limits. Your PDFs are never uploaded to any server.',
       intro:
-        'Make PDFs small enough for email, online forms and job portals. Images inside the PDF are recompressed with MozJPEG, unused data is removed and the file structure is repacked — text stays sharp and selectable.',
+        'Make PDFs small enough for email, online forms and job portals. Images inside the PDF are recompressed with MozJPEG, unused data is removed and the file structure is repacked. Text stays sharp and selectable.',
       card: 'Shrink PDFs for email and uploads',
     },
     'compress-image': {
       name: 'Compress images',
       title: 'Compress images — JPG, PNG, WebP, AVIF online, free',
       description:
-        'Compress JPG, PNG, WebP and AVIF images by up to 80% without visible quality loss. Batch processing in your browser — no upload, no limits.',
+        'Compress JPG, PNG, WebP and AVIF images by up to 80% without visible quality loss. Batch processing in your browser with no upload and no limits.',
       intro:
-        'Drop in a whole folder of photos or screenshots. Each image is optimized with the best open-source encoders — MozJPEG, oxipng with smart palette reduction, libwebp and libavif — and you can resize or change the format on the fly.',
+        'Drop in a whole folder of photos or screenshots. Each image goes through open-source encoders (MozJPEG, oxipng with palette reduction, libwebp, libavif), and you can resize or change the format as you go.',
       card: 'JPG, PNG, WebP and AVIF in one place',
     },
     'compress-jpg': {
@@ -205,7 +205,7 @@ const en = {
       name: 'Compress PNG',
       title: 'Compress PNG — shrink PNG files up to 80%, free',
       description:
-        'Reduce PNG size by up to 80% with smart colour reduction while keeping transparency. Lossless mode available. Runs in your browser — no upload.',
+        'Reduce PNG size by up to 80% with smart colour reduction while keeping transparency. Lossless mode available. Runs in your browser, nothing is uploaded.',
       intro:
         'Smart mode converts the image to an optimized palette of up to 256 colours with careful dithering, then oxipng packs it as tightly as possible. Transparency is preserved. Need pixel-perfect output? Switch to lossless mode.',
       card: 'Transparent images, much lighter',
@@ -218,6 +218,15 @@ const en = {
       intro:
         'WebP is already efficient, but images exported at maximum quality or straight from design tools can usually lose another 30–60% without any visible change. Pick a quality level, resize if needed and download.',
       card: 'Lighter WebP for faster websites',
+    },
+    'image-converter': {
+      name: 'Image converter',
+      title: 'Image converter — JPG, PNG, WebP, AVIF, HEIC, free',
+      description:
+        'Convert images between JPG, PNG, WebP and AVIF and open iPhone HEIC photos. Batch conversion in your browser, nothing is uploaded.',
+      intro:
+        'Drop images in any supported format and pick the format you need. You can switch the target format at any time and the files are converted again right away.',
+      card: 'Any image to JPG, PNG, WebP or AVIF',
     },
     'jpg-to-pdf': {
       name: 'JPG to PDF',
@@ -234,7 +243,7 @@ const en = {
       description:
         'Convert every page of a PDF into high-quality JPG images in your browser. Choose a resolution up to 300 DPI. No upload, no limits.',
       intro:
-        'Each page is rendered with pdf.js — the engine behind Firefox’s PDF viewer — at the resolution you choose and saved as a JPG. Download pages one by one or all together as a ZIP.',
+        'Each page is rendered with pdf.js, the engine behind Firefox’s PDF viewer, at the resolution you choose and saved as a JPG. Download pages one by one or all together as a ZIP.',
       card: 'Every page as an image',
     },
     'pdf-to-png': {
@@ -247,11 +256,20 @@ const en = {
       card: 'Lossless page images',
     },
   },
+  toPdf: {
+    name: '{from} to PDF',
+    title: 'Convert {from} to PDF — free, no upload',
+    description:
+      'Turn {from} images into a PDF in your browser. Combine several images into one document and choose A4 or Letter pages. Nothing is uploaded.',
+    intro:
+      'Add one or more {from} files, put them in the right order and create a single PDF. It all happens on your device, so it is safe for scans of documents and receipts.',
+    card: '{from} images into one PDF',
+  },
   converter: {
     name: '{from} to {to}',
     title: 'Convert {from} to {to} — free online converter, no upload',
     description:
-      'Convert {from} images to {to} in seconds, right in your browser. Batch conversion, adjustable quality, no sign-up — your files never leave your device.',
+      'Convert {from} images to {to} in seconds, right in your browser. Batch conversion, adjustable quality, no sign-up. Your files never leave your device.',
     intro:
       'Add as many {from} files as you like: they are decoded and re-encoded to {to} on your device with fast WebAssembly codecs. Nothing is uploaded, so it is safe even for private photos and documents.',
     card: 'Convert {from} images to {to}',
@@ -273,7 +291,7 @@ const en = {
       },
       {
         h: 'How can you check this?',
-        p: 'Open your browser’s developer tools and watch the Network tab while a file is being processed: no upload requests are made. You can also disconnect from the internet after the page has loaded — everything keeps working. A strict Content Security Policy also prevents the page from sending data to any other website.',
+        p: 'Open your browser’s developer tools and watch the Network tab while a file is being processed: no upload requests are made. You can also disconnect from the internet after the page has loaded and everything keeps working. A strict Content Security Policy also prevents the page from sending data to any other website.',
       },
       {
         h: 'The technology',

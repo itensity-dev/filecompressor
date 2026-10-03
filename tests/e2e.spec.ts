@@ -261,3 +261,49 @@ test('explains when the browser cannot process files', async ({ page }) => {
   await modern.goto('/compress-jpg');
   await expect(modern.locator('.compat-warning')).toBeHidden();
 });
+
+test('converter: switching the target format re-converts the files', async ({ page }) => {
+  const problems = guard(page);
+  await openTool(page, '/png-to-jpg');
+  const png = await makeImage(page, { width: 900, height: 600, type: 'image/png' });
+  await page.locator('input[type=file]').setInputFiles({ name: 'shot.png', mimeType: 'image/png', buffer: png });
+  await expect(page.locator('.item-meta')).toContainText('PNG → JPG');
+  await page.locator('.app-bar').getByRole('button', { name: 'WebP', exact: true }).click();
+  await expect(page.locator('.item-meta')).toContainText('PNG → WebP');
+  await expect(doneRows(page)).toHaveCount(1);
+  const out = await download(page, () => page.locator('.item').getByRole('button', { name: /download/i }).click());
+  expect(out.name).toBe('shot.webp');
+  expect(out.bytes.subarray(8, 12).toString()).toBe('WEBP');
+  // The PDF target leads to the matching "to PDF" page.
+  await expect(page.locator('.app-bar a', { hasText: 'PDF' })).toHaveAttribute('href', '/png-to-pdf');
+  expect(problems).toEqual([]);
+});
+
+test('theme switcher remembers the choice without a flash', async ({ page }) => {
+  const problems = guard(page);
+  await page.goto('/');
+  await page.locator('.menu-theme summary').click();
+  await page.locator('[data-theme-choice=dark]').click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.goto('/ru/compress-pdf');
+  // Set by the inline head script before first paint.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  expect(bg).toBe('rgb(18, 17, 16)');
+  await page.locator('.menu-theme summary').click();
+  await page.locator('[data-theme-choice=system]').click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.+/);
+  expect(problems).toEqual([]);
+});
+
+test('home conversion table links every conversion page', async ({ page, request }) => {
+  await page.goto('/de');
+  const links = page.locator('.matrix td a');
+  await expect(links).toHaveCount(23);
+  for (const href of await links.evaluateAll((els) => els.map((e) => e.getAttribute('href')))) {
+    expect(href).toMatch(/^\/de\/[a-z]+-to-[a-z]+$/);
+  }
+  for (const path of ['/avif-to-webp', '/heic-to-pdf', '/image-converter', '/zh/webp-to-avif']) {
+    expect((await request.get(path)).status(), path).toBe(200);
+  }
+});

@@ -1,11 +1,12 @@
 ---
+import '@fontsource-variable/onest';
 import '../styles/global.css';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import LangBanner from '../components/LangBanner.astro';
 import { getDict } from '../i18n';
 import { LOCALE_INFO, LOCALES, localePath, type Locale } from '../i18n/locales';
-import { SITE_NAME, THEME_COLOR } from '../site';
+import { SITE_NAME } from '../site';
 
 interface Props {
   locale: Locale;
@@ -31,6 +32,13 @@ const ogImage = new URL('/og.png', site).href;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      // Apply a saved light/dark choice before the first paint (no flash).
+      try {
+        var t = localStorage.getItem('fc:theme');
+        if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
@@ -45,8 +53,8 @@ const ogImage = new URL('/og.png', site).href;
         </>
       )
     }
-    <meta name="theme-color" content={THEME_COLOR} />
-    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f4ef" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

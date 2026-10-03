@@ -20,8 +20,6 @@ import {
   CompareIcon,
   DownIcon,
   DownloadIcon,
-  FileIcon,
-  LockIcon,
   PlusIcon,
   TrashIcon,
   UpIcon,
@@ -34,6 +32,8 @@ interface Props {
   tool: Tool;
   t: AppStrings;
   locale: string;
+  /** Converter pages: where the "PDF" target button leads. */
+  pdfHref?: string;
 }
 
 interface Settings {
@@ -65,6 +65,10 @@ interface Item {
   outputs: Output[];
   error?: ErrorCode;
   kept?: boolean;
+  /** Format and pixel size of the result (images). */
+  outFormat?: string;
+  width?: number;
+  height?: number;
   /** Settings the current outputs were produced with. */
   key?: string;
   /** Object URL of the original, for the before/after view. */
@@ -74,6 +78,9 @@ interface Item {
 const IMAGE_INPUTS: InputFormat[] = ['jpg', 'png', 'webp', 'avif', 'heic', 'gif', 'bmp'];
 const BROWSER_VIEWABLE: InputFormat[] = ['jpg', 'png', 'webp', 'avif', 'gif', 'bmp'];
 const RESIZE_OPTIONS = [0, 3840, 2560, 1920, 1280, 800];
+const IMAGE_TARGETS: ImageFormat[] = ['jpg', 'png', 'webp', 'avif'];
+
+const label = (f: string) => FORMAT_LABEL[f as keyof typeof FORMAT_LABEL] ?? f.toUpperCase();
 
 function defaults(tool: Tool): Settings {
   const to = tool.to;
@@ -101,7 +108,7 @@ function settingsKey(tool: Tool, s: Settings): string {
     case 'pdf-compress':
       return JSON.stringify([s.level, s.grayscale]);
     case 'pdf-to-images':
-      return JSON.stringify([s.dpi, s.quality]);
+      return JSON.stringify([s.format, s.dpi, s.quality]);
     case 'images-to-pdf':
       return JSON.stringify([s.pageSize, s.margin]);
   }
@@ -118,7 +125,32 @@ const fill = (s: string, vars: Record<string, string | number>) =>
 
 let nextItemId = 1;
 
-export default function ToolApp({ tool, t, locale }: Props) {
+/** A row of mutually exclusive buttons. */
+function Segmented<T extends string | number>(props: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  label: string;
+  class?: string;
+  extra?: preact.ComponentChildren;
+}) {
+  return (
+    <div class={`segmented ${props.class ?? ''}`} role="group" aria-label={props.label}>
+      {props.options.map((o) => (
+        <button
+          type="button"
+          aria-pressed={o.value === props.value}
+          onClick={() => props.onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+      {props.extra}
+    </div>
+  );
+}
+
+export default function ToolApp({ tool, t, locale, pdfHref }: Props) {
   const storageKey = `fc:settings:${tool.id}`;
   const [settings, setSettings] = useState<Settings>(() => defaults(tool));
   const [items, setItems] = useState<Item[]>([]);
@@ -127,11 +159,14 @@ export default function ToolApp({ tool, t, locale }: Props) {
   const [combined, setCombined] = useState<Output | null>(null);
   const [building, setBuilding] = useState<number | null>(null);
   const [zipping, setZipping] = useState(false);
+  const [ready, setReady] = useState(false);
 
   const input = useRef<HTMLInputElement>(null);
   const pool = useRef<WorkerPool | null>(null);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   const generation = useRef(new Map<number, number>());
   const tasks = useRef(new Map<number, number>());
   const aborts = useRef(new Map<number, AbortController>());
@@ -145,8 +180,6 @@ export default function ToolApp({ tool, t, locale }: Props) {
     [locale],
   );
 
-  const [ready, setReady] = useState(false);
-
   // Files picked before the component hydrated (slow connections) are not lost.
   useEffect(() => {
     setReady(true);
@@ -157,11 +190,18 @@ export default function ToolApp({ tool, t, locale }: Props) {
     }
   }, []);
 
-  // Restore and persist settings (only in this browser).
+  // Restore and persist settings (only in this browser). A converter page
+  // always starts with the target format it is named after.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) setSettings({ ...defaults(tool), ...JSON.parse(saved) });
+      if (saved) {
+        const restored = { ...defaults(tool), ...JSON.parse(saved) };
+        if (tool.category === 'convert' || tool.kind === 'pdf-to-images') {
+          restored.format = defaults(tool).format;
+        }
+        setSettings(restored);
+      }
     } catch {
       /* storage unavailable */
     }
@@ -205,6 +245,9 @@ export default function ToolApp({ tool, t, locale }: Props) {
     return item.file.arrayBuffer();
   };
 
+  const pdfImageFormat = (s: Settings): 'jpg' | 'png' =>
+    s.format === 'png' || (s.format === 'same' && tool.to === 'png') ? 'png' : 'jpg';
+
   const process = async (item: Item) => {
     const s = settingsRef.current;
     const gen = (generation.current.get(item.id) ?? 0) + 1;
@@ -221,11 +264,11 @@ export default function ToolApp({ tool, t, locale }: Props) {
       if (tool.kind === 'pdf-to-images') {
         const controller = new AbortController();
         aborts.current.set(item.id, controller);
+        const ext = pdfImageFormat(s);
         const job = pdfChain.current.then(async () => {
           if (!current()) return;
           const { renderPdf } = await import('../../engine/pdf-render');
           const outputs: Output[] = [];
-          const ext = tool.to === 'png' ? 'png' : 'jpg';
           const base = item.file.name.replace(/\.[^.]+$/, '');
           await renderPdf(
             await item.file.arrayBuffer(),
@@ -233,11 +276,13 @@ export default function ToolApp({ tool, t, locale }: Props) {
             (page) => {
               const name = `${base}-${String(page.page).padStart(page.total >= 100 ? 3 : 2, '0')}.${ext}`;
               outputs.push({ name, blob: page.blob, url: URL.createObjectURL(page.blob) });
-              if (current()) update(item.id, { progress: page.page / page.total, outputs: [...outputs] });
+              if (current()) {
+                update(item.id, { progress: page.page / page.total, outputs: [...outputs] });
+              }
             },
             controller.signal,
           );
-          if (current()) update(item.id, { status: 'done', progress: 1 });
+          if (current()) update(item.id, { status: 'done', progress: 1, outFormat: ext });
           else revoke(outputs);
         });
         pdfChain.current = job.catch(() => undefined);
@@ -284,10 +329,14 @@ export default function ToolApp({ tool, t, locale }: Props) {
         progress: 1,
         outputs: [toOutput(item, result)],
         kept: result.keptOriginal,
+        outFormat: result.ext,
+        width: result.width,
+        height: result.height,
       });
     } catch (e) {
       if (isAbort(e) || !current()) return;
-      console.error(e);
+      // Damaged or unsupported files are expected; only log real failures.
+      if (!(e instanceof EngineError) || e.code === 'failed') console.error(e);
       update(item.id, {
         status: 'error',
         error: e instanceof EngineError ? e.code : 'failed',
@@ -312,7 +361,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
         progress: 0,
         outputs: [],
         preview:
-          tool.kind === 'image' && BROWSER_VIEWABLE.includes(format)
+          (tool.kind === 'image' || tool.kind === 'images-to-pdf') && BROWSER_VIEWABLE.includes(format)
             ? URL.createObjectURL(file)
             : undefined,
       });
@@ -411,6 +460,25 @@ export default function ToolApp({ tool, t, locale }: Props) {
     if (tool.kind === 'images-to-pdf') invalidateCombined();
   }, [settings.pageSize, settings.margin]);
 
+  const reprocessable = (item: Item) =>
+    item.error !== 'unsupported' && item.status !== 'ready' && item.status !== 'queued';
+
+  const reapply = () => {
+    for (const item of itemsRef.current) {
+      if (!reprocessable(item)) continue;
+      cancel(item.id);
+      void process(item);
+    }
+  };
+
+  /** Switching the target format re-runs every file right away. */
+  const chooseFormat = (format: Settings['format']) => {
+    const next = { ...settingsRef.current, format };
+    settingsRef.current = next;
+    setSettings(next);
+    reapply();
+  };
+
   const allOutputs = items.flatMap((i) => i.outputs);
   const doneItems = items.filter((i) => i.status === 'done');
   const busy = items.some((i) => i.status === 'queued' || i.status === 'processing');
@@ -432,13 +500,6 @@ export default function ToolApp({ tool, t, locale }: Props) {
     if (item.outputs.length === 1) return downloadBlob(item.outputs[0].blob, item.outputs[0].name);
     const { makeZip } = await import('../../engine/zip');
     downloadBlob(await makeZip(item.outputs), replaceExtension(item.file.name, 'zip'));
-  };
-
-  const reapply = () => {
-    for (const item of items) if (item.status === 'done' || item.status === 'error') {
-      if (item.error === 'unsupported') continue;
-      void process(item);
-    }
   };
 
   // Paste files from the clipboard and accept drops anywhere on the page.
@@ -486,80 +547,76 @@ export default function ToolApp({ tool, t, locale }: Props) {
     };
   });
 
-  const accept = useMemo(() => {
-    const formats = tool.kind === 'image' || tool.kind === 'images-to-pdf'
+  const inputFormats =
+    tool.kind === 'image' || tool.kind === 'images-to-pdf'
       ? (['jpg', 'png', 'webp', 'avif', 'heic'] as const)
       : (['pdf'] as const);
-    return [...formats.map((f) => ACCEPT[f]), tool.kind === 'image' ? '.gif,.bmp' : '']
-      .filter(Boolean)
-      .join(',');
-  }, [tool]);
 
-  const supportedLabel = fill(t.drop.supported, {
-    formats: (tool.kind === 'image' || tool.kind === 'images-to-pdf'
-      ? ['jpg', 'png', 'webp', 'avif', 'heic']
-      : ['pdf']
-    )
-      .map((f) => FORMAT_LABEL[f as keyof typeof FORMAT_LABEL])
-      .join(', '),
-  });
+  const accept = useMemo(
+    () =>
+      [...inputFormats.map((f) => ACCEPT[f]), tool.kind === 'image' ? '.gif,.bmp' : '']
+        .filter(Boolean)
+        .join(','),
+    [tool],
+  );
 
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) =>
     setSettings((s) => ({ ...s, [k]: v }));
 
   const totalIn = doneItems.reduce((sum, i) => sum + i.file.size, 0);
-  const totalOut = doneItems.reduce((sum, i) => sum + i.outputs.reduce((s, o) => s + o.blob.size, 0), 0);
+  const totalOut = doneItems.reduce(
+    (sum, i) => sum + i.outputs.reduce((s, o) => s + o.blob.size, 0),
+    0,
+  );
   const compareItem = items.find((i) => i.id === compareId);
 
-  // ---------------------------------------------------------------- render
+  // ------------------------------------------------------------ format bar
 
-  const picker = (
-    <input
-      ref={input}
-      type="file"
-      multiple
-      accept={accept}
-      class="visually-hidden"
-      tabIndex={-1}
-      aria-hidden="true"
-      onChange={(e) => {
-        const el = e.target as HTMLInputElement;
-        if (el.files) void addFiles(el.files);
-        el.value = '';
-      }}
-    />
-  );
-
-  const dropzone = (
-    <div class="dropzone" onClick={() => input.current?.click()}>
-      <div class="dropzone-icon">
-        <UploadIcon size={32} />
+  const isConverter = tool.kind === 'image' && tool.category === 'convert';
+  let formatBar: preact.ComponentChildren = null;
+  if (isConverter || tool.id === 'compress-image') {
+    const options = IMAGE_TARGETS.map((f) => ({ value: f as Settings['format'], label: label(f) }));
+    if (!isConverter) options.unshift({ value: 'same', label: t.settings.keepFormat });
+    formatBar = (
+      <div class="app-bar">
+        <span class="app-bar-label">{isConverter ? t.settings.convertTo : t.settings.format}</span>
+        <Segmented
+          class="formats"
+          label={isConverter ? t.settings.convertTo : t.settings.format}
+          value={settings.format}
+          options={options}
+          onChange={chooseFormat}
+          extra={isConverter && pdfHref ? <a href={pdfHref}>PDF</a> : null}
+        />
       </div>
-      <p class="dropzone-title">{t.drop.title}</p>
-      <button
-        type="button"
-        class="btn btn-primary btn-lg"
-        onClick={(e) => {
-          e.stopPropagation();
-          input.current?.click();
-        }}
-      >
-        {t.drop.choose}
-      </button>
-      <p class="dropzone-hint">{t.drop.paste}</p>
-      <p class="dropzone-formats">{supportedLabel}</p>
-      <p class="dropzone-local">
-        <LockIcon size={14} /> {t.drop.local}
-      </p>
-    </div>
-  );
+    );
+  } else if (tool.kind === 'pdf-to-images') {
+    const value = pdfImageFormat(settings);
+    formatBar = (
+      <div class="app-bar">
+        <span class="app-bar-label">{t.settings.convertTo}</span>
+        <Segmented
+          class="formats"
+          label={t.settings.convertTo}
+          value={value}
+          options={[
+            { value: 'jpg', label: 'JPG' },
+            { value: 'png', label: 'PNG' },
+          ]}
+          onChange={(v) => chooseFormat(v)}
+        />
+      </div>
+    );
+  }
 
-  const showQuality =
-    (tool.kind === 'image' &&
-      (settings.format === 'same'
+  // -------------------------------------------------------------- settings
+
+  const lossyTarget =
+    tool.kind === 'image'
+      ? settings.format === 'same'
         ? tool.id !== 'compress-png'
-        : settings.format !== 'png')) ||
-    (tool.kind === 'pdf-to-images' && tool.to === 'jpg');
+        : settings.format !== 'png'
+      : tool.kind === 'pdf-to-images' && pdfImageFormat(settings) === 'jpg';
   const showPngMode =
     tool.kind === 'image' &&
     (settings.format === 'png' ||
@@ -569,25 +626,9 @@ export default function ToolApp({ tool, t, locale }: Props) {
     <section class="settings" aria-label={t.settings.title}>
       <h2 class="settings-title">{t.settings.title}</h2>
 
-      {tool.id === 'compress-image' && (
+      {lossyTarget && (
         <label class="field">
-          <span>{t.settings.format}</span>
-          <select
-            value={settings.format}
-            onChange={(e) => set('format', (e.target as HTMLSelectElement).value as Settings['format'])}
-          >
-            <option value="same">{t.settings.keepFormat}</option>
-            <option value="jpg">JPG</option>
-            <option value="png">PNG</option>
-            <option value="webp">WebP</option>
-            <option value="avif">AVIF</option>
-          </select>
-        </label>
-      )}
-
-      {showQuality && (
-        <label class="field">
-          <span class="field-row">
+          <span class="field-label">
             <span>{t.settings.quality}</span>
             <output>{settings.quality}</output>
           </span>
@@ -604,21 +645,23 @@ export default function ToolApp({ tool, t, locale }: Props) {
       )}
 
       {showPngMode && (
-        <label class="field">
-          <span>{t.settings.pngMode}</span>
-          <select
+        <div class="field">
+          <span class="field-label">{t.settings.pngMode}</span>
+          <Segmented
+            label={t.settings.pngMode}
             value={settings.pngLossy ? 'lossy' : 'lossless'}
-            onChange={(e) => set('pngLossy', (e.target as HTMLSelectElement).value === 'lossy')}
-          >
-            <option value="lossy">{t.settings.pngLossy}</option>
-            <option value="lossless">{t.settings.pngLossless}</option>
-          </select>
-        </label>
+            options={[
+              { value: 'lossy', label: t.settings.pngLossy },
+              { value: 'lossless', label: t.settings.pngLossless },
+            ]}
+            onChange={(v) => set('pngLossy', v === 'lossy')}
+          />
+        </div>
       )}
 
       {tool.kind === 'image' && (
         <label class="field">
-          <span>{t.settings.resize}</span>
+          <span class="field-label">{t.settings.resize}</span>
           <select
             value={settings.maxSide}
             onChange={(e) => set('maxSide', Number((e.target as HTMLSelectElement).value))}
@@ -631,54 +674,57 @@ export default function ToolApp({ tool, t, locale }: Props) {
       )}
 
       {tool.kind === 'pdf-compress' && (
-        <fieldset class="field levels">
-          <legend>{t.settings.level}</legend>
-          {(
-            [
-              ['low', t.settings.levelLow, t.settings.levelLowHint],
-              ['medium', t.settings.levelMedium, t.settings.levelMediumHint],
-              ['high', t.settings.levelHigh, t.settings.levelHighHint],
-            ] as const
-          ).map(([value, label, hint]) => (
-            <label class={`level ${settings.level === value ? 'is-active' : ''}`}>
-              <input
-                type="radio"
-                name={`level-${tool.id}`}
-                value={value}
-                checked={settings.level === value}
-                onChange={() => set('level', value)}
-              />
-              <span class="level-name">{label}</span>
-              <span class="level-hint">{hint}</span>
-            </label>
-          ))}
-        </fieldset>
-      )}
-
-      {tool.kind === 'pdf-compress' && (
-        <label class="check">
-          <input
-            type="checkbox"
-            checked={settings.grayscale}
-            onChange={(e) => set('grayscale', (e.target as HTMLInputElement).checked)}
-          />
-          <span>{t.settings.grayscale}</span>
-        </label>
+        <>
+          <fieldset class="field">
+            <legend>{t.settings.level}</legend>
+            <div class="levels">
+              {(
+                [
+                  ['low', t.settings.levelLow, t.settings.levelLowHint],
+                  ['medium', t.settings.levelMedium, t.settings.levelMediumHint],
+                  ['high', t.settings.levelHigh, t.settings.levelHighHint],
+                ] as const
+              ).map(([value, name, hint]) => (
+                <label class={`level ${settings.level === value ? 'is-active' : ''}`}>
+                  <input
+                    type="radio"
+                    name={`level-${tool.id}`}
+                    value={value}
+                    checked={settings.level === value}
+                    onChange={() => set('level', value)}
+                  />
+                  <span class="level-name">{name}</span>
+                  <span class="level-hint">{hint}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label class="check">
+            <input
+              type="checkbox"
+              checked={settings.grayscale}
+              onChange={(e) => set('grayscale', (e.target as HTMLInputElement).checked)}
+            />
+            <span>{t.settings.grayscale}</span>
+          </label>
+        </>
       )}
 
       {tool.kind === 'images-to-pdf' && (
         <>
-          <label class="field">
-            <span>{t.settings.pageSize}</span>
-            <select
+          <div class="field">
+            <span class="field-label">{t.settings.pageSize}</span>
+            <Segmented
+              label={t.settings.pageSize}
               value={settings.pageSize}
-              onChange={(e) => set('pageSize', (e.target as HTMLSelectElement).value as PageSize)}
-            >
-              <option value="a4">A4</option>
-              <option value="letter">US Letter</option>
-              <option value="fit">{t.settings.pageFit}</option>
-            </select>
-          </label>
+              options={[
+                { value: 'a4', label: 'A4' },
+                { value: 'letter', label: 'Letter' },
+                { value: 'fit', label: t.settings.pageFit },
+              ]}
+              onChange={(v) => set('pageSize', v)}
+            />
+          </div>
           <label class="check">
             <input
               type="checkbox"
@@ -691,17 +737,20 @@ export default function ToolApp({ tool, t, locale }: Props) {
       )}
 
       {tool.kind === 'pdf-to-images' && (
-        <label class="field">
-          <span>{t.settings.dpi}</span>
-          <select
+        <div class="field">
+          <span class="field-label">{t.settings.dpi}</span>
+          <Segmented
+            label={t.settings.dpi}
             value={settings.dpi}
-            onChange={(e) => set('dpi', Number((e.target as HTMLSelectElement).value))}
-          >
-            <option value={72}>72 DPI</option>
-            <option value={150}>150 DPI</option>
-            <option value={300}>300 DPI</option>
-          </select>
-        </label>
+            options={[
+              { value: 72, label: '72' },
+              { value: 150, label: '150' },
+              { value: 300, label: '300' },
+            ]}
+            onChange={(v) => set('dpi', v)}
+          />
+          <small>DPI</small>
+        </div>
       )}
 
       {stale && tool.kind !== 'images-to-pdf' && (
@@ -715,61 +764,65 @@ export default function ToolApp({ tool, t, locale }: Props) {
     </section>
   );
 
-  const statusText = (item: Item) => {
+  // ----------------------------------------------------------------- rows
+
+  const metaText = (item: Item) => {
     if (item.status === 'error') return t.status.errors[item.error ?? 'failed'];
     if (item.status === 'queued') return t.status.queued;
-    if (item.status === 'ready') return t.status.ready;
     if (item.status === 'processing') {
-      if (tool.kind === 'pdf-to-images' && item.outputs.length)
+      if (tool.kind === 'pdf-to-images' && item.outputs.length) {
         return `${t.status.processing} ${plural(t.results.pages, item.outputs.length)}`;
+      }
       return `${t.status.processing} ${Math.round(item.progress * 100)}%`;
     }
+    const from = label(item.format);
+    if (item.status === 'ready') return `${from} · ${formatBytes(item.file.size, locale)}`;
     if (item.kept) return t.status.kept;
-    if (tool.kind === 'pdf-to-images') return plural(t.results.pages, item.outputs.length);
-    const out = item.outputs.reduce((s, o) => s + o.blob.size, 0);
-    return `${formatBytes(item.file.size, locale)} → ${formatBytes(out, locale)}`;
+    if (tool.kind === 'pdf-to-images') {
+      return `${from} → ${label(item.outFormat ?? 'jpg')} · ${plural(t.results.pages, item.outputs.length)}`;
+    }
+    const to = item.outFormat ? label(item.outFormat) : from;
+    const dims = item.width && item.height ? ` · ${item.width}×${item.height}` : '';
+    return `${to === from ? from : `${from} → ${to}`}${dims}`;
   };
 
   const row = (item: Item, index: number) => {
     const out = item.outputs.reduce((s, o) => s + o.blob.size, 0);
-    const ratio = item.status === 'done' && !item.kept ? out / item.file.size - 1 : 0;
-    const thumb =
-      tool.kind === 'image' && item.outputs[0]
-        ? item.outputs[0].url
-        : tool.kind === 'pdf-to-images' && item.outputs[0]
-          ? item.outputs[0].url
-          : item.preview;
+    const done = item.status === 'done';
+    const ratio = done && !item.kept && out ? out / item.file.size - 1 : 0;
+    const thumb = (tool.kind === 'image' || tool.kind === 'pdf-to-images') && item.outputs[0]
+      ? item.outputs[0].url
+      : item.preview;
     return (
       <li class={`item is-${item.status}`} key={item.id}>
         <div class="item-thumb">
-          {thumb ? (
-            <img src={thumb} alt="" loading="lazy" decoding="async" />
-          ) : item.status === 'error' ? (
+          {item.status === 'error' ? (
             <AlertIcon />
+          ) : thumb ? (
+            <img src={thumb} alt="" loading="lazy" decoding="async" />
           ) : (
-            <FileIcon />
+            <span class="ext">{label(item.format)}</span>
           )}
         </div>
         <div class="item-body">
           <div class="item-name" title={item.file.name}>
             {item.file.name}
           </div>
-          <div class="item-status">{statusText(item)}</div>
-          {item.status === 'processing' && (
-            <div
-              class="progress"
-              role="progressbar"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(item.progress * 100)}
-            >
-              <span style={{ width: `${Math.max(4, item.progress * 100)}%` }} />
-            </div>
-          )}
+          <div class={`item-status ${item.status === 'error' ? '' : 'item-meta'}`}>
+            {metaText(item)}
+          </div>
         </div>
-        {item.status === 'done' && tool.category === 'compress' && !item.kept && ratio < 0 && (
-          <span class="badge-saving">{formatPercent(ratio, locale)}</span>
-        )}
+        <div class="item-sizes">
+          {done && tool.kind !== 'pdf-to-images' && (
+            <>
+              <span>
+                {formatBytes(item.file.size, locale)} → {formatBytes(out, locale)}
+              </span>
+              {ratio < 0 && <span class="badge-saving">{formatPercent(ratio, locale)}</span>}
+            </>
+          )}
+          {done && tool.kind === 'pdf-to-images' && <span>{formatBytes(out, locale)}</span>}
+        </div>
         <div class="item-actions">
           {tool.kind === 'images-to-pdf' && (
             <>
@@ -795,7 +848,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
               </button>
             </>
           )}
-          {item.status === 'done' && item.preview && item.outputs[0] && !item.kept && (
+          {done && item.preview && item.outputs[0] && !item.kept && (
             <button
               type="button"
               class="icon-btn"
@@ -806,7 +859,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
               <CompareIcon />
             </button>
           )}
-          {item.status === 'done' && item.outputs.length > 0 && (
+          {done && item.outputs.length > 0 && (
             <button type="button" class="btn btn-small" onClick={() => void downloadItem(item)}>
               <DownloadIcon size={16} /> {t.results.download}
             </button>
@@ -821,26 +874,96 @@ export default function ToolApp({ tool, t, locale }: Props) {
             <TrashIcon />
           </button>
         </div>
+        {item.status === 'processing' && (
+          <div
+            class="progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(item.progress * 100)}
+          >
+            <span style={{ width: `${Math.max(3, item.progress * 100)}%` }} />
+          </div>
+        )}
       </li>
     );
   };
 
   const summary = () => {
-    if (tool.kind === 'images-to-pdf') return plural(t.results.images, items.length);
-    if (!doneItems.length) return plural(t.results.files, items.length);
-    if (tool.kind === 'pdf-to-images') return plural(t.results.pages, allOutputs.length);
-    if (tool.category === 'compress' && totalOut < totalIn) {
-      return `${plural(t.results.files, doneItems.length)} · ${fill(t.results.saved, {
-        size: formatBytes(totalIn - totalOut, locale),
-        percent: formatPercent(totalOut / totalIn - 1, locale),
-      })}`;
+    if (tool.kind === 'images-to-pdf') {
+      return <span class="big">{plural(t.results.images, items.length)}</span>;
     }
-    return `${plural(t.results.files, doneItems.length)} · ${formatBytes(totalIn, locale)} → ${formatBytes(totalOut, locale)}`;
+    if (!doneItems.length) return <span class="big">{plural(t.results.files, items.length)}</span>;
+    if (tool.kind === 'pdf-to-images') {
+      return (
+        <>
+          <span class="big">{plural(t.results.pages, allOutputs.length)}</span>
+          <span class="muted">{formatBytes(totalOut, locale)}</span>
+        </>
+      );
+    }
+    const sizes = `${formatBytes(totalIn, locale)} → ${formatBytes(totalOut, locale)}`;
+    if (totalOut < totalIn) {
+      return (
+        <>
+          <span class="big saving">−{formatBytes(totalIn - totalOut, locale)}</span>
+          <span class="muted">
+            {plural(t.results.files, doneItems.length)} · {sizes} (
+            {formatPercent(totalOut / totalIn - 1, locale)})
+          </span>
+        </>
+      );
+    }
+    return (
+      <>
+        <span class="big">{plural(t.results.files, doneItems.length)}</span>
+        <span class="muted">{sizes}</span>
+      </>
+    );
   };
+
+  // ---------------------------------------------------------------- render
+
+  const picker = (
+    <input
+      ref={input}
+      type="file"
+      multiple
+      accept={accept}
+      class="visually-hidden"
+      tabIndex={-1}
+      aria-hidden="true"
+      onChange={(e) => {
+        const el = e.target as HTMLInputElement;
+        if (el.files) void addFiles(el.files);
+        el.value = '';
+      }}
+    />
+  );
+
+  const dropzone = (
+    <div class="dropzone" onClick={() => input.current?.click()}>
+      <UploadIcon size={28} />
+      <p class="dropzone-title">{t.drop.title}</p>
+      <button
+        type="button"
+        class="btn btn-primary btn-lg"
+        onClick={(e) => {
+          e.stopPropagation();
+          input.current?.click();
+        }}
+      >
+        {t.drop.choose}
+      </button>
+      <p class="dropzone-hint">{t.drop.paste}</p>
+      <p class="dropzone-formats">{inputFormats.map(label).join(' · ')}</p>
+    </div>
+  );
 
   return (
     <div class={`app ${items.length ? 'has-items' : ''}`} data-ready={ready ? '' : undefined}>
       {picker}
+      {formatBar}
       <div class="app-main">
         {items.length === 0 ? (
           dropzone
@@ -855,7 +978,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
                   <PlusIcon size={16} /> {t.drop.addMore}
                 </button>
                 <button type="button" class="btn" onClick={clearAll}>
-                  <TrashIcon size={16} /> {t.results.clear}
+                  {t.results.clear}
                 </button>
                 {tool.kind !== 'images-to-pdf' && allOutputs.length > 0 && (
                   <button
@@ -876,7 +999,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
                 {combined ? (
                   <>
                     <span class="combine-ready">
-                      {t.results.pdfReady} · {formatBytes(combined.blob.size, locale)}
+                      {t.results.pdfReady} · <span class="mono">{formatBytes(combined.blob.size, locale)}</span>
                     </span>
                     <button
                       type="button"
@@ -887,16 +1010,19 @@ export default function ToolApp({ tool, t, locale }: Props) {
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    class="btn btn-primary btn-lg"
-                    disabled={building !== null || !items.some((i) => i.status === 'ready')}
-                    onClick={() => void buildPdf()}
-                  >
-                    {building !== null
-                      ? `${t.results.creating} ${Math.round(building * 100)}%`
-                      : t.results.createPdf}
-                  </button>
+                  <>
+                    <span class="combine-ready">{plural(t.results.images, items.length)} → PDF</span>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-lg"
+                      disabled={building !== null || !items.some((i) => i.status === 'ready')}
+                      onClick={() => void buildPdf()}
+                    >
+                      {building !== null
+                        ? `${t.results.creating} ${Math.round(building * 100)}%`
+                        : t.results.createPdf}
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -910,7 +1036,7 @@ export default function ToolApp({ tool, t, locale }: Props) {
       {dragging && (
         <div class="drop-overlay" aria-hidden="true">
           <div>
-            <UploadIcon size={48} />
+            <UploadIcon size={40} />
             <p>{t.drop.overlay}</p>
           </div>
         </div>

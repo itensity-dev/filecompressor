@@ -17,6 +17,10 @@ const es: Dict = {
     about: 'Cómo funciona',
     language: 'Idioma',
     skip: 'Saltar al contenido',
+    theme: 'Tema',
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
+    themeSystem: 'Auto',
   },
   badges: {
     private: 'Tus archivos no salen de tu dispositivo',
@@ -31,10 +35,11 @@ const es: Dict = {
     supported: 'Formatos admitidos: {formats}',
     overlay: 'Suelta para añadir archivos',
     addMore: 'Añadir más archivos',
-    local: 'Se procesan en tu dispositivo: no se sube nada.',
+    local: 'Los archivos se procesan en este dispositivo. No se sube nada.',
   },
   settings: {
     title: 'Ajustes',
+    convertTo: 'Convertir a',
     quality: 'Calidad',
     qualityHint: 'Menos calidad = archivo más pequeño',
     format: 'Formato de salida',
@@ -63,10 +68,10 @@ const es: Dict = {
     queued: 'En espera…',
     processing: 'Procesando…',
     ready: 'Listo',
-    kept: 'Ya optimizado: se conserva el original',
+    kept: 'Ya optimizado, se conserva el original',
     errors: {
       unsupported: 'Este tipo de archivo no es compatible aquí',
-      encrypted: 'PDF protegido con contraseña: quítale la contraseña primero',
+      encrypted: 'PDF protegido con contraseña. Quítale la contraseña primero.',
       decode: 'El archivo está dañado o no se puede leer',
       failed: 'No se pudo procesar el archivo (puede ser demasiado grande para este dispositivo)',
     },
@@ -93,11 +98,14 @@ const es: Dict = {
     images: { one: '{n} imagen', other: '{n} imágenes' } as Plural,
   },
   home: {
-    h1: 'Comprimir y convertir archivos online — en privado, en tu navegador',
+    h1: 'Comprimir y convertir archivos sin subirlos',
     subtitle:
-      'PDF, JPG, PNG, WebP, AVIF y HEIC. Gratis, sin límites y tus archivos nunca salen de tu dispositivo.',
-    compressTitle: 'Comprimir archivos',
-    convertTitle: 'Convertir archivos',
+      'PDF, JPG, PNG, WebP, AVIF y HEIC. Todo el trabajo se hace en tu navegador, así que tus archivos se quedan en tu equipo o en tu teléfono.',
+    compressTitle: 'Comprimir',
+    convertTitle: 'Convertir',
+    convertHint: 'Busca a la izquierda el formato que tienes y arriba el que necesitas.',
+    matrixFrom: 'De',
+    matrixTo: 'A',
   },
   how: {
     title: '{tool} en 3 sencillos pasos',
@@ -108,31 +116,23 @@ const es: Dict = {
     ],
   },
   why: {
-    title: '¿Por qué {site}?',
+    title: 'Cómo funciona',
     items: [
       {
-        title: 'Privado por diseño',
-        text: 'Los archivos se procesan en tu dispositivo con WebAssembly. Nunca se suben ni se guardan, y nadie los ve, ni siquiera nosotros.',
+        title: 'No se sube nada',
+        text: 'Al abrir la página, el código de compresión se carga en tu navegador. Los archivos se leen, se procesan y se guardan en tu dispositivo, y nunca se envían a ningún sitio.',
       },
       {
-        title: 'Gratis y sin límites',
-        text: 'Sin registro, sin marcas de agua, sin cuotas diarias y sin límite de archivos. Procesa todo lo que tu dispositivo aguante.',
+        title: 'Sin cuentas ni límites',
+        text: 'No hay registro, ni marcas de agua, ni cuota diaria. El único límite es la memoria de tu dispositivo.',
       },
       {
-        title: 'La mejor compresión',
-        text: 'Con la tecnología de MozJPEG, oxipng, libwebp y libavif: codificadores de código abierto en los que confían Google y Mozilla.',
-      },
-      {
-        title: 'Procesamiento por lotes rápido',
-        text: 'Los archivos se procesan en paralelo en todos los núcleos del procesador, sin esperar subidas ni descargas, incluso si son cientos.',
+        title: 'Codificadores de código abierto probados',
+        text: 'MozJPEG, oxipng, libwebp, libavif, pdf-lib y pdf.js, compilados a WebAssembly. Funcionan en todos los núcleos del procesador.',
       },
       {
         title: 'Funciona sin conexión',
-        text: 'Después de la primera visita, el sitio funciona sin conexión a internet. Instálalo como app en tu teléfono o en tu PC.',
-      },
-      {
-        title: 'Sin anuncios ni rastreo',
-        text: 'Sin cookies, sin rastreadores y sin anuncios. Una política de seguridad de contenido (CSP) estricta impide que la página envíe tus datos a ningún sitio.',
+        text: 'Cuando una herramienta ya se ha cargado, sigue funcionando sin conexión. También puedes instalar el sitio como app.',
       },
     ],
   },
@@ -215,6 +215,15 @@ const es: Dict = {
         'WebP ya es eficiente, pero las imágenes exportadas a máxima calidad o directamente desde herramientas de diseño suelen poder reducirse otro 30–60% sin ningún cambio visible. Elige un nivel de calidad, redimensiona si hace falta y descarga.',
       card: 'WebP más ligero, webs más rápidas',
     },
+    'image-converter': {
+      name: 'Convertidor de imágenes',
+      title: 'Convertidor de imágenes — JPG, PNG, WebP, AVIF y HEIC gratis',
+      description:
+        'Convierte imágenes entre JPG, PNG, WebP y AVIF y abre fotos HEIC del iPhone. Conversión por lotes en tu navegador, sin subir nada.',
+      intro:
+        'Suelta imágenes en cualquier formato compatible y elige el formato que necesitas. Puedes cambiar el formato de destino cuando quieras y los archivos se vuelven a convertir al momento.',
+      card: 'Cualquier imagen a JPG, PNG, WebP o AVIF',
+    },
     'jpg-to-pdf': {
       name: 'JPG a PDF',
       title: 'Convertir JPG a PDF — unir imágenes en un solo PDF gratis',
@@ -242,6 +251,15 @@ const es: Dict = {
         'PNG mantiene el texto y los trazos perfectamente nítidos, por eso es ideal para diapositivas, diagramas y documentos que quieras editar o anotar. Las páginas se renderizan localmente con pdf.js.',
       card: 'Páginas como imágenes sin pérdida',
     },
+  },
+  toPdf: {
+    name: '{from} a PDF',
+    title: 'Convertir {from} a PDF — gratis y sin subir archivos',
+    description:
+      'Convierte imágenes {from} a PDF en tu navegador. Une varias imágenes en un solo documento y elige páginas A4 o Letter. No se sube nada.',
+    intro:
+      'Añade uno o varios archivos {from}, ordénalos y crea un único PDF. Todo ocurre en tu dispositivo, así que es seguro incluso para escaneos de documentos y recibos.',
+    card: 'Imágenes {from} en un solo PDF',
   },
   converter: {
     name: '{from} a {to}',

@@ -17,6 +17,10 @@ const zh: Dict = {
     about: '工作原理',
     language: '语言',
     skip: '跳到主要内容',
+    theme: '主题',
+    themeLight: '浅色',
+    themeDark: '深色',
+    themeSystem: '自动',
   },
   badges: {
     private: '文件不离开您的设备',
@@ -31,10 +35,11 @@ const zh: Dict = {
     supported: '支持格式：{formats}',
     overlay: '松开即可添加文件',
     addMore: '添加更多文件',
-    local: '在您的设备上处理，不会上传任何内容。',
+    local: '在本设备上处理，不会上传任何内容。',
   },
   settings: {
     title: '设置',
+    convertTo: '转换为',
     quality: '质量',
     qualityHint: '质量越低，文件越小',
     format: '输出格式',
@@ -66,7 +71,7 @@ const zh: Dict = {
     kept: '已是最优，保留原文件',
     errors: {
       unsupported: '此处不支持该文件类型',
-      encrypted: 'PDF 受密码保护，请先移除密码',
+      encrypted: 'PDF 受密码保护，请先移除密码。',
       decode: '文件已损坏或无法读取',
       failed: '无法处理此文件（可能超出了本设备的处理能力）',
     },
@@ -93,10 +98,13 @@ const zh: Dict = {
     images: { other: '{n} 张图片' } as Plural,
   },
   home: {
-    h1: '在线压缩、转换PDF和图片——在浏览器本地完成，安全私密',
-    subtitle: '支持 PDF、JPG、PNG、WebP、AVIF 和 HEIC。免费、不限量，文件始终保留在您的设备上。',
-    compressTitle: '压缩文件',
-    convertTitle: '转换文件',
+    h1: '压缩和转换文件，无需上传',
+    subtitle: '支持 PDF、JPG、PNG、WebP、AVIF 和 HEIC。处理过程在浏览器中完成，文件始终留在您的电脑或手机上。',
+    compressTitle: '压缩',
+    convertTitle: '转换',
+    convertHint: '在左侧找到您现有的格式，再在顶部找到需要的格式。',
+    matrixFrom: '从',
+    matrixTo: '到',
   },
   how: {
     title: '{tool}，只需简单 3 步',
@@ -107,31 +115,23 @@ const zh: Dict = {
     ],
   },
   why: {
-    title: '为什么选择 {site}？',
+    title: '工作原理',
     items: [
       {
-        title: '隐私优先的设计',
-        text: '文件通过 WebAssembly 在您的设备上处理，绝不会被上传、存储或被任何人查看——包括我们。',
+        title: '不上传任何文件',
+        text: '打开页面时，压缩程序会加载到您的浏览器中。文件在您的设备上读取、处理和保存，不会发送到任何地方。',
       },
       {
-        title: '免费，无限制',
-        text: '无需注册，没有水印，没有每日配额，也不限制文件数量。只要设备处理得了，想处理多少就处理多少。',
+        title: '无需账号，没有限制',
+        text: '无需注册，没有水印，也没有每日配额。唯一的限制是设备的内存。',
       },
       {
-        title: '一流的压缩效果',
-        text: '采用 MozJPEG、oxipng、libwebp 和 libavif——深受 Google 和 Mozilla 信赖的开源编码器。',
-      },
-      {
-        title: '快速批量处理',
-        text: '文件在所有 CPU 核心上并行处理，无需等待上传或下载——即使有数百个文件也一样快。',
+        title: '成熟的开源编码器',
+        text: 'MozJPEG、oxipng、libwebp、libavif、pdf-lib 和 pdf.js，编译为 WebAssembly，在所有 CPU 核心上并行运行。',
       },
       {
         title: '支持离线使用',
-        text: '首次访问后，即使没有网络也能使用本网站。还可以将它作为应用安装到手机或电脑上。',
-      },
-      {
-        title: '无广告，无跟踪',
-        text: '没有 Cookie、没有跟踪器、没有广告。严格的内容安全策略（Content Security Policy）可阻止页面将您的数据发送到任何地方。',
+        text: '工具加载完成后，即使断网也能继续使用。您还可以将本网站安装为应用。',
       },
     ],
   },
@@ -214,6 +214,15 @@ const zh: Dict = {
         'WebP 本身已经很高效，但以最高质量导出或直接从设计工具导出的图片，通常还能再缩小 30–60%，且看不出任何变化。选择质量等级，按需调整尺寸，然后下载即可。',
       card: 'WebP更小，网站更快',
     },
+    'image-converter': {
+      name: '图片格式转换',
+      title: '免费图片格式转换——JPG、PNG、WebP、AVIF、HEIC',
+      description:
+        '在 JPG、PNG、WebP 和 AVIF 之间相互转换图片，还能转换 iPhone 的 HEIC 照片。在浏览器中批量转换，不会上传任何内容。',
+      intro:
+        '拖入任意受支持格式的图片，然后选择需要的格式。目标格式可以随时更改，文件会立即重新转换。',
+      card: '任意图片转JPG、PNG、WebP或AVIF',
+    },
     'jpg-to-pdf': {
       name: 'JPG转PDF',
       title: 'JPG转PDF——在线将多张图片合并成一个PDF，免费',
@@ -241,6 +250,15 @@ const zh: Dict = {
         'PNG 能让文字和线条保持清晰锐利，非常适合幻灯片、图表以及需要编辑或批注的文档。所有页面都在本地使用 pdf.js 渲染。',
       card: '无损的页面图片',
     },
+  },
+  toPdf: {
+    name: '{from}转PDF',
+    title: '{from}转PDF——将{from}图片转换为PDF，免费无需上传',
+    description:
+      '在浏览器中将 {from} 图片转换为 PDF。可将多张图片合并为一个文档，并选择 A4 或 Letter 页面尺寸。不会上传任何内容。',
+    intro:
+      '添加一个或多个 {from} 文件，排好顺序，即可生成一个 PDF。整个过程都在您的设备上完成，处理文件扫描件和收据也很安全。',
+    card: '{from}图片合成一个PDF',
   },
   converter: {
     name: '{from}转{to}',

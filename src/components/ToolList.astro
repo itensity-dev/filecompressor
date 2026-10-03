@@ -1,0 +1,33 @@
+---
+import { getDict, toolText } from '../i18n';
+import { localePath, type Locale } from '../i18n/locales';
+import { FORMAT_LABEL, type Tool } from '../tools';
+
+interface Props {
+  locale: Locale;
+  tools: Tool[];
+}
+const { locale, tools } = Astro.props;
+const dict = getDict(locale);
+const formats = (t: Tool) =>
+  t.to === 'same' || t.to === t.from[0]
+    ? t.from.map((f) => FORMAT_LABEL[f]).join(' · ')
+    : `${FORMAT_LABEL[t.from[0]]} → ${FORMAT_LABEL[t.to]}`;
+---
+
+<ul class="tool-list">
+  {
+    tools.map((tool) => {
+      const text = toolText(dict, tool);
+      return (
+        <li>
+          <a class="tool-row" href={localePath(locale, tool.id)}>
+            <span class="tool-row-name">{text.name}</span>
+            <span class="tool-row-text">{text.card}</span>
+            <span class="tool-row-formats">{formats(tool)}</span>
+          </a>
+        </li>
+      );
+    })
+  }
+</ul>

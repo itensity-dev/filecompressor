@@ -39,9 +39,12 @@ export interface ToolText {
 }
 
 export function toolText(dict: Dict, tool: Tool): ToolText {
-  const raw: ToolText = tool.template
-    ? dict.converter
-    : dict.tools[tool.id as keyof Dict['tools']];
+  const raw: ToolText =
+    tool.template === 'image'
+      ? dict.converter
+      : tool.template === 'pdf'
+        ? dict.toPdf
+        : dict.tools[tool.id as keyof Dict['tools']];
   const vars = {
     from: FORMAT_LABEL[tool.from[0]],
     to: tool.to === 'same' ? '' : FORMAT_LABEL[tool.to],

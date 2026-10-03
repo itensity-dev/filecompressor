@@ -1,13 +1,14 @@
 ---
-import Badges from '../../components/Badges.astro';
 import Faq from '../../components/Faq.astro';
 import Features from '../../components/Features.astro';
-import ToolCards from '../../components/ToolCards.astro';
-import { fmt, getDict } from '../../i18n';
+import Matrix from '../../components/Matrix.astro';
+import PrivacyLine from '../../components/PrivacyLine.astro';
+import ToolList from '../../components/ToolList.astro';
+import { fmt, getDict, toolText } from '../../i18n';
 import { langParams, localePath, LOCALE_INFO, type Locale } from '../../i18n/locales';
 import Base from '../../layouts/Base.astro';
 import { SITE_NAME } from '../../site';
-import { TOOLS } from '../../tools';
+import { FORMAT_LABEL, getTool, TOOLS, type Tool } from '../../tools';
 
 export function getStaticPaths() {
   return langParams().map(({ lang, locale }) => ({ params: { lang }, props: { locale } }));
@@ -18,6 +19,14 @@ const dict = getDict(locale);
 const vars = { tool: SITE_NAME };
 const faq = dict.faq.items.map((i) => ({ q: fmt(i.q, vars), a: fmt(i.a, vars) }));
 const url = new URL(localePath(locale), Astro.site).href;
+const imageConverter = getTool('image-converter')!;
+// The most common jobs, one click from the homepage.
+const quick = ['compress-pdf', 'compress-image', 'heic-to-jpg', 'jpg-to-pdf', 'pdf-to-jpg']
+  .map((id) => getTool(id))
+  .filter((t): t is Tool => !!t);
+const formatsOf = (t: Tool) =>
+  t.to === 'same' ? 'IMG' : t.to === t.from[0] ? FORMAT_LABEL[t.to] : `${FORMAT_LABEL[t.from[0]]}→${FORMAT_LABEL[t.to]}`;
+const imageConverterText = toolText(dict, imageConverter);
 
 const jsonLd = [
   {
@@ -53,23 +62,50 @@ const jsonLd = [
 
 <Base locale={locale} title={fmt(dict.meta.homeTitle)} description={fmt(dict.meta.homeDescription)} page="" jsonLd={jsonLd}>
   <section class="hero hero-home container">
-    <h1>{dict.home.h1}</h1>
-    <p class="lead">{dict.home.subtitle}</p>
-    <Badges locale={locale} />
+    <div class="hero-grid">
+      <div>
+        <h1>{dict.home.h1}</h1>
+        <p class="lead">{dict.home.subtitle}</p>
+        <PrivacyLine locale={locale} />
+      </div>
+      <nav class="quick" aria-label={dict.nav.allTools}>
+        <ul>
+          {
+            quick.map((tool) => (
+              <li>
+                <a href={localePath(locale, tool.id)}>
+                  <span>{toolText(dict, tool).name}</span>
+                  <span class="mono">{formatsOf(tool)}</span>
+                  <span aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </div>
   </section>
 
   <div class="container">
     <section class="section" id="compress">
-      <h2>{dict.home.compressTitle}</h2>
-      <ToolCards locale={locale} tools={TOOLS.filter((t) => t.category === 'compress')} />
+      <div class="section-head">
+        <h2>{dict.home.compressTitle}</h2>
+      </div>
+      <ToolList locale={locale} tools={TOOLS.filter((t) => t.category === 'compress')} />
     </section>
-    <section class="section" id="convert">
-      <h2>{dict.home.convertTitle}</h2>
-      <ToolCards locale={locale} tools={TOOLS.filter((t) => t.category === 'convert')} />
-    </section>
-  </div>
 
-  <div class="container prose">
+    <section class="section" id="convert">
+      <div class="section-head">
+        <h2>{dict.home.convertTitle}</h2>
+        <p>{dict.home.convertHint}</p>
+      </div>
+      <Matrix locale={locale} />
+      <p class="matrix-note">
+        <a href={localePath(locale, imageConverter.id)}>{imageConverterText.name} →</a>
+        {' '}{imageConverterText.card}
+      </p>
+    </section>
+
     <Features locale={locale} />
     <Faq title={dict.faq.title} items={faq} />
   </div>

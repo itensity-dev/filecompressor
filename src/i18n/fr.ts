@@ -17,6 +17,10 @@ const fr: Dict = {
     about: 'Comment ça marche',
     language: 'Langue',
     skip: 'Aller au contenu',
+    theme: 'Thème',
+    themeLight: 'Clair',
+    themeDark: 'Sombre',
+    themeSystem: 'Auto',
   },
   badges: {
     private: 'Vos fichiers restent sur votre appareil',
@@ -31,10 +35,11 @@ const fr: Dict = {
     supported: 'Formats pris en charge : {formats}',
     overlay: 'Déposez pour ajouter les fichiers',
     addMore: 'Ajouter des fichiers',
-    local: 'Traitement sur votre appareil – aucun fichier n’est envoyé.',
+    local: 'Traitement sur cet appareil. Aucun fichier n’est envoyé.',
   },
   settings: {
     title: 'Paramètres',
+    convertTo: 'Convertir en',
     quality: 'Qualité',
     qualityHint: 'Qualité plus basse = fichier plus léger',
     format: 'Format de sortie',
@@ -63,10 +68,10 @@ const fr: Dict = {
     queued: 'En attente…',
     processing: 'Traitement en cours…',
     ready: 'Terminé',
-    kept: 'Déjà optimisé – original conservé',
+    kept: 'Déjà optimisé, original conservé',
     errors: {
       unsupported: 'Ce type de fichier n’est pas pris en charge ici',
-      encrypted: 'PDF protégé par mot de passe – retirez d’abord le mot de passe',
+      encrypted: 'PDF protégé par mot de passe. Retirez d’abord le mot de passe.',
       decode: 'Le fichier est endommagé ou illisible',
       failed: 'Impossible de traiter ce fichier (il est peut-être trop lourd pour cet appareil)',
     },
@@ -93,11 +98,14 @@ const fr: Dict = {
     images: { one: '{n} image', other: '{n} images' } as Plural,
   },
   home: {
-    h1: 'Compresser et convertir PDF et images – en toute confidentialité, dans votre navigateur',
+    h1: 'Compresser et convertir des fichiers sans les envoyer en ligne',
     subtitle:
-      'PDF, JPG, PNG, WebP, AVIF et HEIC. Gratuit, illimité, et vos fichiers ne quittent jamais votre appareil.',
-    compressTitle: 'Compresser des fichiers',
-    convertTitle: 'Convertir des fichiers',
+      'PDF, JPG, PNG, WebP, AVIF et HEIC. Tout se passe dans votre navigateur, vos fichiers restent donc sur votre ordinateur ou votre téléphone.',
+    compressTitle: 'Compresser',
+    convertTitle: 'Convertir',
+    convertHint: 'Repérez à gauche le format que vous avez, et en haut celui dont vous avez besoin.',
+    matrixFrom: 'De',
+    matrixTo: 'Vers',
   },
   how: {
     title: '{tool} : comment faire en 3 étapes',
@@ -108,31 +116,23 @@ const fr: Dict = {
     ],
   },
   why: {
-    title: 'Pourquoi {site} ?',
+    title: 'Comment ça marche',
     items: [
       {
-        title: 'Confidentiel par conception',
-        text: 'Les fichiers sont traités sur votre appareil grâce à WebAssembly. Ils ne sont jamais envoyés, stockés ni consultés par qui que ce soit – pas même par nous.',
+        title: 'Rien n’est envoyé',
+        text: 'À l’ouverture de la page, le code de compression est chargé dans votre navigateur. Les fichiers sont lus, traités et enregistrés sur votre appareil, sans jamais être envoyés ailleurs.',
       },
       {
-        title: 'Gratuit et sans limite',
-        text: 'Pas d’inscription, pas de filigrane, pas de quota quotidien ni de limite sur le nombre de fichiers. Traitez-en autant que votre appareil le permet.',
+        title: 'Ni compte ni limite',
+        text: 'Pas d’inscription, pas de filigrane, pas de quota quotidien. La seule limite est la mémoire de votre appareil.',
       },
       {
-        title: 'Une compression de pointe',
-        text: 'Propulsé par MozJPEG, oxipng, libwebp et libavif, des encodeurs open source auxquels Google et Mozilla font confiance.',
-      },
-      {
-        title: 'Traitement par lots rapide',
-        text: 'Les fichiers sont traités en parallèle sur tous les cœurs du processeur, sans attente d’envoi ni de téléchargement – même pour des centaines de fichiers.',
+        title: 'Des encodeurs open source éprouvés',
+        text: 'MozJPEG, oxipng, libwebp, libavif, pdf-lib et pdf.js, compilés en WebAssembly et exécutés sur tous les cœurs du processeur.',
       },
       {
         title: 'Fonctionne hors ligne',
-        text: 'Après la première visite, le site fonctionne sans connexion Internet. Installez-le comme une application sur votre téléphone ou votre ordinateur.',
-      },
-      {
-        title: 'Sans publicité ni pistage',
-        text: 'Pas de cookies, pas de traceurs, pas de publicité. Une Content Security Policy stricte empêche la page d’envoyer vos données où que ce soit.',
+        text: 'Une fois chargé, un outil continue de fonctionner sans connexion. Vous pouvez aussi installer le site comme une application.',
       },
     ],
   },
@@ -215,6 +215,15 @@ const fr: Dict = {
         'Le WebP est déjà efficace, mais les images exportées en qualité maximale ou directement depuis des outils de design peuvent généralement perdre encore 30 à 60 % sans changement visible. Choisissez un niveau de qualité, redimensionnez si besoin et téléchargez.',
       card: 'WebP plus légers, sites plus rapides',
     },
+    'image-converter': {
+      name: 'Convertisseur d’images',
+      title: 'Convertisseur d’images – JPG, PNG, WebP, AVIF, HEIC, gratuit',
+      description:
+        'Convertissez vos images entre JPG, PNG, WebP et AVIF, et ouvrez les photos HEIC de l’iPhone. Conversion par lots dans le navigateur, sans envoi.',
+      intro:
+        'Déposez des images dans n’importe quel format pris en charge et choisissez le format voulu. Vous pouvez en changer à tout moment, les fichiers sont aussitôt reconvertis.',
+      card: 'Toute image en JPG, PNG, WebP ou AVIF',
+    },
     'jpg-to-pdf': {
       name: 'JPG en PDF',
       title: 'JPG en PDF – fusionner des images en un seul PDF, gratuit',
@@ -242,6 +251,15 @@ const fr: Dict = {
         'Le PNG garde le texte et les tracés parfaitement nets : idéal pour les diapositives, les schémas et les documents que vous souhaitez modifier ou annoter. Les pages sont rendues localement avec pdf.js.',
       card: 'Des pages en images sans perte',
     },
+  },
+  toPdf: {
+    name: '{from} en PDF',
+    title: 'Convertir {from} en PDF – gratuit et sans envoi',
+    description:
+      'Transformez vos images {from} en PDF dans votre navigateur. Réunissez plusieurs images en un seul document, en pages A4 ou Letter. Rien n’est envoyé.',
+    intro:
+      'Ajoutez un ou plusieurs fichiers {from}, placez-les dans le bon ordre et créez un seul PDF. Tout se passe sur votre appareil, vous pouvez donc l’utiliser sans crainte pour des scans de documents ou de reçus.',
+    card: 'Vos images {from} en un seul PDF',
   },
   converter: {
     name: '{from} en {to}',

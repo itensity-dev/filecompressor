@@ -17,6 +17,10 @@ const de: Dict = {
     about: 'So funktioniert’s',
     language: 'Sprache',
     skip: 'Zum Inhalt springen',
+    theme: 'Design',
+    themeLight: 'Hell',
+    themeDark: 'Dunkel',
+    themeSystem: 'Auto',
   },
   badges: {
     private: 'Dateien verlassen nie Ihr Gerät',
@@ -31,10 +35,11 @@ const de: Dict = {
     supported: 'Unterstützt: {formats}',
     overlay: 'Loslassen, um Dateien hinzuzufügen',
     addMore: 'Weitere Dateien hinzufügen',
-    local: 'Verarbeitung auf Ihrem Gerät – nichts wird hochgeladen.',
+    local: 'Verarbeitung auf diesem Gerät. Nichts wird hochgeladen.',
   },
   settings: {
     title: 'Einstellungen',
+    convertTo: 'Umwandeln in',
     quality: 'Qualität',
     qualityHint: 'Geringere Qualität = kleinere Datei',
     format: 'Ausgabeformat',
@@ -63,10 +68,10 @@ const de: Dict = {
     queued: 'Wartet…',
     processing: 'Wird verarbeitet…',
     ready: 'Fertig',
-    kept: 'Bereits optimiert – Original beibehalten',
+    kept: 'Bereits optimiert, Original beibehalten',
     errors: {
       unsupported: 'Dieser Dateityp wird hier nicht unterstützt',
-      encrypted: 'Passwortgeschütztes PDF – bitte zuerst das Passwort entfernen',
+      encrypted: 'Passwortgeschütztes PDF. Entfernen Sie zuerst das Passwort.',
       decode: 'Die Datei ist beschädigt oder kann nicht gelesen werden',
       failed: 'Datei konnte nicht verarbeitet werden (evtl. zu groß für dieses Gerät)',
     },
@@ -93,11 +98,14 @@ const de: Dict = {
     images: { one: '{n} Bild', other: '{n} Bilder' } as Plural,
   },
   home: {
-    h1: 'PDF und Bilder komprimieren und umwandeln – privat in Ihrem Browser',
+    h1: 'Dateien komprimieren und umwandeln, ohne sie hochzuladen',
     subtitle:
-      'PDF, JPG, PNG, WebP, AVIF und HEIC. Kostenlos, unbegrenzt – und Ihre Dateien verlassen nie Ihr Gerät.',
-    compressTitle: 'Dateien komprimieren',
-    convertTitle: 'Dateien umwandeln',
+      'PDF, JPG, PNG, WebP, AVIF und HEIC. Die Verarbeitung läuft in Ihrem Browser, Ihre Dateien bleiben also auf Ihrem Computer oder Smartphone.',
+    compressTitle: 'Komprimieren',
+    convertTitle: 'Umwandeln',
+    convertHint: 'Suchen Sie links das Format, das Sie haben, und oben das Format, das Sie brauchen.',
+    matrixFrom: 'Von',
+    matrixTo: 'Nach',
   },
   how: {
     title: '{tool} – in 3 einfachen Schritten',
@@ -108,31 +116,23 @@ const de: Dict = {
     ],
   },
   why: {
-    title: 'Warum {site}?',
+    title: 'So funktioniert’s',
     items: [
       {
-        title: 'Konsequent privat',
-        text: 'Dateien werden mit WebAssembly auf Ihrem Gerät verarbeitet. Sie werden nie hochgeladen, gespeichert oder von jemandem eingesehen – nicht einmal von uns.',
+        title: 'Nichts wird hochgeladen',
+        text: 'Beim Öffnen der Seite wird der Komprimierungscode in Ihren Browser geladen. Dateien werden auf Ihrem Gerät gelesen, verarbeitet und gespeichert und nie irgendwohin gesendet.',
       },
       {
-        title: 'Kostenlos und ohne Limits',
-        text: 'Keine Anmeldung, keine Wasserzeichen, keine Tageslimits und keine Begrenzung der Dateianzahl. Verarbeiten Sie so viel, wie Ihr Gerät schafft.',
+        title: 'Kein Konto, keine Limits',
+        text: 'Es gibt keine Anmeldung, kein Wasserzeichen und kein Tageslimit. Die einzige Grenze ist der Arbeitsspeicher Ihres Geräts.',
       },
       {
-        title: 'Erstklassige Komprimierung',
-        text: 'Basierend auf MozJPEG, oxipng, libwebp und libavif – Open-Source-Encodern, denen Google und Mozilla vertrauen.',
-      },
-      {
-        title: 'Schnelle Stapelverarbeitung',
-        text: 'Dateien werden parallel auf allen CPU-Kernen verarbeitet, ohne Warten auf Uploads oder Downloads – selbst bei Hunderten von Dateien.',
+        title: 'Bewährte Open-Source-Encoder',
+        text: 'MozJPEG, oxipng, libwebp, libavif, pdf-lib und pdf.js, nach WebAssembly kompiliert und auf allen CPU-Kernen ausgeführt.',
       },
       {
         title: 'Funktioniert offline',
-        text: 'Nach dem ersten Besuch funktioniert die Website auch ohne Internetverbindung. Installieren Sie sie als App auf Ihrem Smartphone oder Computer.',
-      },
-      {
-        title: 'Keine Werbung, kein Tracking',
-        text: 'Keine Cookies, keine Tracker, keine Werbung. Eine strenge Content Security Policy verhindert, dass die Seite Ihre Daten irgendwohin sendet.',
+        text: 'Ist ein Tool einmal geladen, funktioniert es auch ohne Internetverbindung. Sie können die Website außerdem als App installieren.',
       },
     ],
   },
@@ -215,6 +215,15 @@ const de: Dict = {
         'WebP ist bereits effizient, doch Bilder, die mit maximaler Qualität oder direkt aus Design-Tools exportiert wurden, lassen sich meist um weitere 30–60 % verkleinern – ohne sichtbaren Unterschied. Qualität wählen, bei Bedarf Größe ändern und herunterladen.',
       card: 'Leichtere WebP für schnellere Websites',
     },
+    'image-converter': {
+      name: 'Bildkonverter',
+      title: 'Bildkonverter – JPG, PNG, WebP, AVIF, HEIC umwandeln, kostenlos',
+      description:
+        'Bilder zwischen JPG, PNG, WebP und AVIF umwandeln und HEIC-Fotos vom iPhone öffnen. Stapelkonvertierung im Browser, nichts wird hochgeladen.',
+      intro:
+        'Legen Sie Bilder in einem beliebigen unterstützten Format ab und wählen Sie das gewünschte Zielformat. Sie können es jederzeit wechseln, die Dateien werden dann sofort neu umgewandelt.',
+      card: 'Jedes Bild in JPG, PNG, WebP oder AVIF',
+    },
     'jpg-to-pdf': {
       name: 'JPG in PDF',
       title: 'JPG in PDF umwandeln – Bilder zu einem PDF zusammenfügen',
@@ -242,6 +251,15 @@ const de: Dict = {
         'PNG gibt Text und Strichgrafiken perfekt scharf wieder – ideal für Folien, Diagramme und Dokumente, die Sie bearbeiten oder kommentieren möchten. Die Seiten werden lokal mit pdf.js gerendert.',
       card: 'Verlustfreie Bilder jeder Seite',
     },
+  },
+  toPdf: {
+    name: '{from} in PDF',
+    title: '{from} in PDF umwandeln – kostenlos, ohne Upload',
+    description:
+      '{from}-Bilder im Browser in ein PDF umwandeln. Mehrere Bilder zu einem Dokument zusammenfügen und A4- oder Letter-Seiten wählen. Nichts wird hochgeladen.',
+    intro:
+      'Fügen Sie eine oder mehrere {from}-Dateien hinzu, bringen Sie sie in die richtige Reihenfolge und erstellen Sie daraus ein einziges PDF. Alles passiert auf Ihrem Gerät, daher eignet es sich auch für Scans von Dokumenten und Belegen.',
+    card: '{from}-Bilder zu einem PDF zusammenfügen',
   },
   converter: {
     name: '{from} in {to}',
