@@ -9,9 +9,10 @@ import { EngineError, type PdfToImagesOptions } from './types';
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-// Browsers refuse canvases above ~16k px per side or ~268 MP in total.
+// Stay within the smallest canvas limit in use (iOS Safari: ~16.7 MP);
+// A4 at 300 DPI is 8.7 MP, so only oversized pages are scaled down.
 const MAX_SIDE = 12_000;
-const MAX_AREA = 60_000_000;
+const MAX_AREA = 16_000_000;
 
 export interface RenderedPage {
   blob: Blob;

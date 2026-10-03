@@ -296,6 +296,12 @@ const pt: Dict = {
     text: 'A página que você procura não existe ou foi movida.',
     back: 'Ir para a página inicial',
   },
+  compat: {
+    outdated:
+      'Seu navegador é antigo demais para processar arquivos no seu dispositivo. Atualize-o ou abra esta página em uma versão recente do Chrome, Safari, Firefox ou Edge.',
+    noWasm:
+      'O WebAssembly está desativado no seu navegador (por exemplo, pelo Modo de Isolamento do iPhone) e é necessário para processar arquivos no seu dispositivo. Adicione este site como exceção ou use outro navegador.',
+  },
   langBanner: {
     text: 'Esta página está disponível em português.',
     action: 'Mudar',

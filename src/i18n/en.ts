@@ -300,6 +300,12 @@ const en = {
     text: 'The page you are looking for does not exist or has been moved.',
     back: 'Go to the homepage',
   },
+  compat: {
+    outdated:
+      'Your browser is too old to process files on your device. Please update it, or open this page in a recent Chrome, Safari, Firefox or Edge.',
+    noWasm:
+      'WebAssembly is turned off in your browser (for example by iPhone Lockdown Mode), and it is needed to process files on your device. Add this site as an exception or use another browser.',
+  },
   langBanner: {
     text: 'This page is available in English.',
     action: 'Switch',

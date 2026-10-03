@@ -22,7 +22,12 @@ export async function decodeHeic(file: Blob): Promise<ImageBitmap> {
     try {
       return await createImageBitmap(file, { imageOrientation: 'from-image' });
     } catch {
-      // fall through to libheif
+      try {
+        // Older Safari rejects the option value; orientation is applied by default.
+        return await createImageBitmap(file);
+      } catch {
+        // fall through to libheif
+      }
     }
   }
   // The CSP-safe build avoids eval and runs the decoder in its own worker.

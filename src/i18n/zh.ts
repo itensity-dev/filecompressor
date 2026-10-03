@@ -295,6 +295,12 @@ const zh: Dict = {
     text: '您访问的页面不存在或已被移动。',
     back: '返回首页',
   },
+  compat: {
+    outdated:
+      '您的浏览器版本过旧，无法在设备上处理文件。请更新浏览器，或使用最新版 Chrome、Safari、Firefox 或 Edge 打开本页。',
+    noWasm:
+      '您的浏览器已禁用 WebAssembly（例如 iPhone 的锁定模式），而在设备上处理文件需要它。请将本站添加为例外，或换用其他浏览器。',
+  },
   langBanner: {
     text: '本页面提供简体中文版本。',
     action: '切换',

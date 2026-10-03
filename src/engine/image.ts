@@ -17,13 +17,62 @@ import {
 // (smooth photos, wide gradients), so PNGs fall back to lossless mode.
 const MIN_PALETTE_PSNR = 30;
 
-function bitmapToImageData(bitmap: ImageBitmap): ImageData {
-  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new EngineError('failed', 'no 2d context');
-  ctx.drawImage(bitmap, 0, 0);
+// iOS Safari caps a canvas at ~16.7 million pixels (24 MP iPhone photos are
+// bigger) and past that silently returns empty pixels instead of throwing.
+// Every canvas is therefore checked before its output is trusted.
+const SAFE_CANVAS_AREA = 16_777_216;
+
+/** Older Safari rejects newer option values: retry with browser defaults. */
+async function createBitmap(
+  source: ImageBitmapSource,
+  options: ImageBitmapOptions = {},
+): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(source, options);
+  } catch (e) {
+    if (e instanceof TypeError) return createImageBitmap(source);
+    throw e;
+  }
+}
+
+/** Draws a bitmap to a canvas and reads the pixels, or null if the canvas is unusable. */
+function readPixels(bitmap: ImageBitmap): ImageData | null {
+  const { width, height } = bitmap;
+  if (typeof OffscreenCanvas === 'undefined') return null;
+  try {
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    // Probe the far corner: an over-limit canvas reads back as transparent.
+    ctx.fillStyle = '#00ff00';
+    ctx.fillRect(width - 1, height - 1, 1, 1);
+    const probe = ctx.getImageData(width - 1, height - 1, 1, 1).data;
+    if (probe[1] !== 255 || probe[3] !== 255) return null;
+    ctx.clearRect(width - 1, height - 1, 1, 1);
+    ctx.drawImage(bitmap, 0, 0);
+    return ctx.getImageData(0, 0, width, height);
+  } catch {
+    return null; // e.g. RangeError for sizes the browser refuses outright
+  }
+}
+
+async function bitmapToImageData(bitmap: ImageBitmap): Promise<ImageData> {
+  let pixels = readPixels(bitmap);
+  const area = bitmap.width * bitmap.height;
+  if (!pixels && area > SAFE_CANVAS_AREA) {
+    // Too big for this browser's canvas: let the decoder downscale to fit.
+    const scale = Math.sqrt(SAFE_CANVAS_AREA / area) * 0.99;
+    const small = await createImageBitmap(bitmap, {
+      resizeWidth: Math.floor(bitmap.width * scale),
+      resizeHeight: Math.floor(bitmap.height * scale),
+      resizeQuality: 'high',
+    });
+    pixels = readPixels(small);
+    small.close();
+  }
   bitmap.close();
-  return ctx.getImageData(0, 0, canvas.width, canvas.height);
+  if (!pixels) throw new EngineError('failed', 'canvas unavailable');
+  return pixels;
 }
 
 async function decodeWithCodec(buf: ArrayBuffer, format: InputFormat): Promise<ImageData> {
@@ -47,24 +96,29 @@ async function decodeWithCodec(buf: ArrayBuffer, format: InputFormat): Promise<I
 /**
  * Decodes to straight RGBA. The browser's decoder is preferred: it is fast,
  * applies EXIF orientation and converts embedded colour profiles to sRGB
- * (we strip profiles on output). WebAssembly decoders are the fallback.
+ * (we strip profiles on output). WebAssembly decoders are the fallback for
+ * formats or sizes the browser cannot handle.
  */
 export async function decodeImage(input: ImageSource, format: InputFormat): Promise<ImageData> {
   if (input instanceof ImageBitmap) return bitmapToImageData(input);
   const mime = (MIME as Record<string, string>)[format];
   try {
-    const bitmap = await createImageBitmap(new Blob([input], { type: mime }), {
+    const bitmap = await createBitmap(new Blob([input], { type: mime }), {
       imageOrientation: 'from-image',
       premultiplyAlpha: 'none',
     });
-    return bitmapToImageData(bitmap);
+    const pixels = readPixels(bitmap);
+    bitmap.close();
+    if (pixels) return pixels;
   } catch {
-    try {
-      return await decodeWithCodec(input, format);
-    } catch (e) {
-      if (e instanceof EngineError) throw e;
-      throw new EngineError('decode', String(e));
-    }
+    // fall through to the WebAssembly decoders
+  }
+  // No canvas size limits here, so huge photos still decode at full size.
+  try {
+    return await decodeWithCodec(input, format);
+  } catch (e) {
+    if (e instanceof EngineError) throw e;
+    throw new EngineError('decode', String(e));
   }
 }
 

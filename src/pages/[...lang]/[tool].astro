@@ -1,5 +1,6 @@
 ---
 import Badges from '../../components/Badges.astro';
+import BrowserCheck from '../../components/BrowserCheck.astro';
 import Faq from '../../components/Faq.astro';
 import Features from '../../components/Features.astro';
 import ToolCards from '../../components/ToolCards.astro';
@@ -86,6 +87,7 @@ const appStrings = {
   </section>
 
   <section class="container tool-section">
+    <BrowserCheck locale={locale} />
     <ToolApp client:load tool={tool} t={appStrings} locale={LOCALE_INFO[locale].hreflang} />
     <noscript><p class="noscript">JavaScript is required: files are processed by code running in your browser.</p></noscript>
   </section>

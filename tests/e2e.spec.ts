@@ -178,3 +178,86 @@ test('HEIC decoder loads under CSP and reports broken files', async ({ page }) =
   // Expected: a decode error, not a CSP violation or a crash.
   expect(problems.filter((p) => !p.startsWith('console:'))).toEqual([]);
 });
+
+/** Width and height from a JPEG's SOF marker. */
+function jpegSize(b: Buffer) {
+  let i = 2;
+  while (i + 9 < b.length) {
+    if (b[i] !== 0xff) return null;
+    const marker = b[i + 1];
+    if (marker >= 0xc0 && marker <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(marker)) {
+      return { height: b.readUInt16BE(i + 5), width: b.readUInt16BE(i + 7) };
+    }
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  return null;
+}
+
+test('large photos survive the iOS Safari canvas limit', async ({ page }) => {
+  // Reproduce iOS Safari inside the processing worker: canvases above
+  // 16.7 MP silently read back as empty pixels instead of throwing.
+  await page.addInitScript(() => {
+    const patch = `
+      const getContext = OffscreenCanvas.prototype.getContext;
+      OffscreenCanvas.prototype.getContext = function (type, options) {
+        const ctx = getContext.call(this, type, options);
+        if (type !== '2d' || this.width * this.height <= 16777216) return ctx;
+        return new Proxy(ctx, {
+          get(target, key) {
+            if (key === 'getImageData') return (x, y, w, h) => new ImageData(w, h);
+            if (key === 'drawImage' || key === 'fillRect') return () => {};
+            const value = target[key];
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+          set(target, key, value) {
+            target[key] = value;
+            return true;
+          },
+        });
+      };`;
+    const NativeWorker = window.Worker;
+    window.Worker = class extends NativeWorker {
+      constructor(url: string | URL, options?: WorkerOptions) {
+        const href = new URL(url, location.href).href;
+        if (options?.type === 'module' && href.includes('processor.worker')) {
+          const source = `import ${JSON.stringify(href)};\n${patch}`;
+          super(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })), options);
+        } else {
+          super(url, options);
+        }
+      }
+    };
+  });
+  const problems = guard(page);
+  await openTool(page, '/compress-jpg');
+  const big = await makeImage(page, { width: 5000, height: 3500, type: 'image/jpeg', quality: 0.95, noise: true });
+  await page.locator('input[type=file]').setInputFiles({ name: 'iphone.jpg', mimeType: 'image/jpeg', buffer: big });
+  await expect(doneRows(page)).toHaveCount(1);
+  const out = await download(page, () => page.locator('.item').getByRole('button', { name: /download/i }).click());
+  expect(jpegSize(out.bytes)).toEqual({ width: 5000, height: 3500 });
+  // An empty (black) frame would compress to a few kilobytes.
+  expect(out.bytes.length).toBeGreaterThan(300_000);
+  expect(problems).toEqual([]);
+});
+
+test('explains when the browser cannot process files', async ({ page }) => {
+  await page.addInitScript(() => {
+    // @ts-expect-error simulate iPhone Lockdown Mode
+    delete window.WebAssembly;
+  });
+  await page.goto('/ru/compress-pdf');
+  await expect(page.locator('.compat-warning')).toBeVisible();
+  await expect(page.locator('.compat-warning')).toContainText('WebAssembly');
+
+  const old = await page.context().newPage();
+  await old.addInitScript(() => {
+    // @ts-expect-error simulate a browser from before 2023
+    delete window.OffscreenCanvas;
+  });
+  await old.goto('/compress-jpg');
+  await expect(old.locator('.compat-warning')).toContainText('too old');
+
+  const modern = await page.context().newPage();
+  await modern.goto('/compress-jpg');
+  await expect(modern.locator('.compat-warning')).toBeHidden();
+});

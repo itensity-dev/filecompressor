@@ -296,6 +296,12 @@ const de: Dict = {
     text: 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
     back: 'Zur Startseite',
   },
+  compat: {
+    outdated:
+      'Ihr Browser ist zu alt, um Dateien auf Ihrem Gerät zu verarbeiten. Bitte aktualisieren Sie ihn oder öffnen Sie diese Seite in einer aktuellen Version von Chrome, Safari, Firefox oder Edge.',
+    noWasm:
+      'In Ihrem Browser ist WebAssembly deaktiviert (z. B. durch den Blockierungsmodus des iPhone), wird aber für die Verarbeitung auf Ihrem Gerät benötigt. Fügen Sie diese Website als Ausnahme hinzu oder verwenden Sie einen anderen Browser.',
+  },
   langBanner: {
     text: 'Diese Seite ist auch auf Deutsch verfügbar.',
     action: 'Wechseln',

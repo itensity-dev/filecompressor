@@ -117,7 +117,18 @@ export class WorkerPool {
 }
 
 function defaultPoolSize(): number {
-  const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
+  if (typeof navigator === 'undefined') return 1;
+  const nav = navigator as Navigator & { deviceMemory?: number };
   // Leave a core for the UI; cap memory use on big batches.
-  return Math.max(1, Math.min(4, cores - 1));
+  let size = Math.min(4, (nav.hardwareConcurrency || 2) - 1);
+  // Phones and tablets get far less memory per tab (iOS reloads a tab that
+  // goes over its limit), and a 24 MP photo needs ~100 MB per copy.
+  // iPadOS reports a Mac user agent; touch support gives it away.
+  const mobile =
+    /Android|iPhone|iPad|iPod/i.test(nav.userAgent) ||
+    (/Macintosh/.test(nav.userAgent) && nav.maxTouchPoints > 1);
+  if (mobile) size = Math.min(size, 2);
+  if (nav.deviceMemory !== undefined && nav.deviceMemory <= 2) size = 1;
+  else if (nav.deviceMemory !== undefined && nav.deviceMemory <= 4) size = Math.min(size, 2);
+  return Math.max(1, size);
 }

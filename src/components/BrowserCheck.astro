@@ -1,0 +1,38 @@
+---
+// Explains why the tool cannot run instead of failing silently: browsers
+// older than ~2023, or WebAssembly disabled (e.g. iPhone Lockdown Mode).
+import { getDict } from '../i18n';
+import type { Locale } from '../i18n/locales';
+
+const dict = getDict(Astro.props.locale as Locale);
+---
+
+<p
+  class="compat-warning"
+  role="alert"
+  hidden
+  data-outdated={dict.compat.outdated}
+  data-nowasm={dict.compat.noWasm}
+>
+</p>
+
+<script>
+  const warning = document.querySelector<HTMLElement>('.compat-warning');
+  if (warning) {
+    let message = '';
+    if (typeof WebAssembly !== 'object' || typeof WebAssembly.instantiate !== 'function') {
+      message = warning.dataset.nowasm || '';
+    } else if (
+      !('Worker' in window) ||
+      !('OffscreenCanvas' in window) ||
+      !('createImageBitmap' in window) ||
+      !('CompressionStream' in window)
+    ) {
+      message = warning.dataset.outdated || '';
+    }
+    if (message) {
+      warning.textContent = message;
+      warning.hidden = false;
+    }
+  }
+</script>

@@ -296,6 +296,12 @@ const fr: Dict = {
     text: 'La page que vous recherchez n’existe pas ou a été déplacée.',
     back: 'Retour à l’accueil',
   },
+  compat: {
+    outdated:
+      'Votre navigateur est trop ancien pour traiter des fichiers sur votre appareil. Mettez-le à jour ou ouvrez cette page dans une version récente de Chrome, Safari, Firefox ou Edge.',
+    noWasm:
+      'WebAssembly est désactivé dans votre navigateur (par exemple par le mode Isolement de l’iPhone), alors qu’il est nécessaire pour traiter les fichiers sur votre appareil. Ajoutez ce site aux exceptions ou utilisez un autre navigateur.',
+  },
   langBanner: {
     text: 'Cette page est disponible en français.',
     action: 'Changer',
