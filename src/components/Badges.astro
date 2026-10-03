@@ -1,0 +1,13 @@
+---
+import { getDict } from '../i18n';
+import type { Locale } from '../i18n/locales';
+
+const dict = getDict(Astro.props.locale as Locale);
+---
+
+<ul class="badges">
+  <li><span aria-hidden="true">🔒</span> {dict.badges.private}</li>
+  <li><span aria-hidden="true">✓</span> {dict.badges.free}</li>
+  <li><span aria-hidden="true">∞</span> {dict.badges.unlimited}</li>
+  <li><span aria-hidden="true">📴</span> {dict.badges.offline}</li>
+</ul>

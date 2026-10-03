@@ -1,0 +1,76 @@
+---
+import Badges from '../../components/Badges.astro';
+import Faq from '../../components/Faq.astro';
+import Features from '../../components/Features.astro';
+import ToolCards from '../../components/ToolCards.astro';
+import { fmt, getDict } from '../../i18n';
+import { langParams, localePath, LOCALE_INFO, type Locale } from '../../i18n/locales';
+import Base from '../../layouts/Base.astro';
+import { SITE_NAME } from '../../site';
+import { TOOLS } from '../../tools';
+
+export function getStaticPaths() {
+  return langParams().map(({ lang, locale }) => ({ params: { lang }, props: { locale } }));
+}
+
+const { locale } = Astro.props as { locale: Locale };
+const dict = getDict(locale);
+const vars = { tool: SITE_NAME };
+const faq = dict.faq.items.map((i) => ({ q: fmt(i.q, vars), a: fmt(i.a, vars) }));
+const url = new URL(localePath(locale), Astro.site).href;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: SITE_NAME,
+    url,
+    description: fmt(dict.meta.homeDescription),
+    inLanguage: LOCALE_INFO[locale].hreflang,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: SITE_NAME,
+    url,
+    applicationCategory: 'MultimediaApplication',
+    operatingSystem: 'Any',
+    isAccessibleForFree: true,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    featureList: dict.why.items.map((i) => i.title),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faq.map((i) => ({
+      '@type': 'Question',
+      name: i.q,
+      acceptedAnswer: { '@type': 'Answer', text: i.a },
+    })),
+  },
+];
+---
+
+<Base locale={locale} title={fmt(dict.meta.homeTitle)} description={fmt(dict.meta.homeDescription)} page="" jsonLd={jsonLd}>
+  <section class="hero hero-home container">
+    <h1>{dict.home.h1}</h1>
+    <p class="lead">{dict.home.subtitle}</p>
+    <Badges locale={locale} />
+  </section>
+
+  <div class="container">
+    <section class="section" id="compress">
+      <h2>{dict.home.compressTitle}</h2>
+      <ToolCards locale={locale} tools={TOOLS.filter((t) => t.category === 'compress')} />
+    </section>
+    <section class="section" id="convert">
+      <h2>{dict.home.convertTitle}</h2>
+      <ToolCards locale={locale} tools={TOOLS.filter((t) => t.category === 'convert')} />
+    </section>
+  </div>
+
+  <div class="container prose">
+    <Features locale={locale} />
+    <Faq title={dict.faq.title} items={faq} />
+  </div>
+</Base>

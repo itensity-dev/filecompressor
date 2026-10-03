@@ -1,0 +1,68 @@
+---
+import { getDict, toolText } from '../i18n';
+import { LOCALE_INFO, LOCALES, localePath, type Locale } from '../i18n/locales';
+import { SITE_NAME } from '../site';
+import { TOOLS } from '../tools';
+import Logo from './Logo.astro';
+
+interface Props {
+  locale: Locale;
+  page: string;
+}
+const { locale, page } = Astro.props;
+const dict = getDict(locale);
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="footer-brand">
+      <a class="logo" href={localePath(locale)}>
+        <Logo size={24} />
+        <span>{SITE_NAME}</span>
+      </a>
+      <p>{dict.footer.tagline}</p>
+      <p class="footer-privacy">{dict.footer.privacy}</p>
+      <p><a href={localePath(locale, 'about')}>{dict.nav.about}</a></p>
+    </div>
+    <nav aria-label={dict.nav.compress}>
+      <h2>{dict.nav.compress}</h2>
+      <ul>
+        {
+          TOOLS.filter((t) => t.category === 'compress').map((t) => (
+            <li>
+              <a href={localePath(locale, t.id)}>{toolText(dict, t).name}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <nav aria-label={dict.nav.convert}>
+      <h2>{dict.nav.convert}</h2>
+      <ul class="cols-2">
+        {
+          TOOLS.filter((t) => t.category === 'convert').map((t) => (
+            <li>
+              <a href={localePath(locale, t.id)}>{toolText(dict, t).name}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+    <nav aria-label={dict.footer.languages}>
+      <h2>{dict.footer.languages}</h2>
+      <ul>
+        {
+          LOCALES.map((l) => (
+            <li>
+              <a href={localePath(l, page)} hreflang={LOCALE_INFO[l].hreflang} lang={LOCALE_INFO[l].hreflang} data-lang-choice>
+                {LOCALE_INFO[l].name}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+  <div class="container footer-bottom">© {year} {SITE_NAME}</div>
+</footer>

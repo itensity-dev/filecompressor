@@ -1,0 +1,25 @@
+---
+import { fmt, getDict } from '../i18n';
+import type { Locale } from '../i18n/locales';
+
+interface Props {
+  locale: Locale;
+}
+const dict = getDict(Astro.props.locale);
+const icons = ['🔒', '🎁', '⚡', '🚀', '📴', '🛡️'];
+---
+
+<section class="section">
+  <h2>{fmt(dict.why.title)}</h2>
+  <ul class="features">
+    {
+      dict.why.items.map((item, i) => (
+        <li class="feature">
+          <span class="feature-icon" aria-hidden="true">{icons[i]}</span>
+          <h3>{item.title}</h3>
+          <p>{item.text}</p>
+        </li>
+      ))
+    }
+  </ul>
+</section>
